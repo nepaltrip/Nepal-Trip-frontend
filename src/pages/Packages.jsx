@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
-import { PackageCard } from "@/components/PackageCard";
-import { Input } from "@/components/ui/input";
+import { Header } from "../components/site/Header";
+import { Footer } from "../components/site/Footer";
+import { PackageCard } from "../components/site/PackageCard";
+import { Input } from "../components/ui/input";
 
 const CATEGORIES = ["All", "Mountains", "Beach", "Nature", "Honeymoon", "Heritage", "Culture"];
 

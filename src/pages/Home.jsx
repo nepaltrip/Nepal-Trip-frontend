@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Compass, Heart, ShieldCheck, Star } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
-import { PackageCard } from "@/components/PackageCard";
-import { InquiryDialog } from "@/components/InquiryDialog";
-import { heroImage } from "@/lib/images";
+import { Button } from "../components/ui/button";
+import { Header } from "../components/site/Header";
+import { Footer } from "../components/site/Footer";
+import { PackageCard } from "../components/site/PackageCard";
+import { InquiryDialog } from "../components/site/InquiryDialog";
+import { heroImage } from "../lib/images";
 
 export default function Home() {
     // Temporary fallback data to keep the UI beautiful before the backend connects

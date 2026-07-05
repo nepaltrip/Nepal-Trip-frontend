@@ -1,6 +1,6 @@
-import { Link } from "@tanstack/react-router";
-import { Clock, MapPin } from "lucide-react";
+import { Link } from "react-router-dom";
 import { resolveImage } from "@/lib/images";
+import { Clock, MapPin } from "lucide-react";
 
 export function PackageCard({ pkg }) {
     if (!pkg) return null;

@@ -1,5 +1,5 @@
-import { Link } from "@tanstack/react-router"; // Swap with "react-router-dom" later if you switch routing libraries
-import { Instagram, Facebook, Mail, Phone, MapPin } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Mail, Phone, MapPin } from "lucide-react";
 
 export function Footer({ settings }) {
     // Safe fallback if settings object hasn't loaded yet from MongoDB
@@ -33,10 +33,6 @@ export function Footer({ settings }) {
                         <li className="flex gap-2"><Phone className="h-4 w-4 mt-0.5" /> {settings.contact_phone}</li>
                         <li className="flex gap-2"><MapPin className="h-4 w-4 mt-0.5" /> {settings.contact_address}</li>
                     </ul>
-                    <div className="mt-4 flex gap-3">
-                        {settings.instagram && <a href={settings.instagram} target="_blank" rel="noreferrer" className="hover:text-accent"><Instagram className="h-5 w-5" /></a>}
-                        {settings.facebook && <a href={settings.facebook} target="_blank" rel="noreferrer" className="hover:text-accent"><Facebook className="h-5 w-5" /></a>}
-                    </div>
                 </div>
             </div>
             <div className="border-t border-primary-foreground/10 py-4 text-center text-xs text-primary-foreground/60">
