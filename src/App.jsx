@@ -5,6 +5,7 @@ import { Navbar } from './components/site/Navbar';
 import { Footer } from './components/site/Footer';
 import { AdminLayout } from './components/admin/AdminLayout'; // Adjust path as needed
 import './App.css';
+import RegisteredUsers from './pages/Admin/RegisteredUsers';
 
 // ==========================================
 // 1. Lazy Load Public Pages
@@ -95,6 +96,7 @@ function App() {
           <Route path="/admin" element={<AdminLayout />}>
             {/* The "index" route maps to exactly "/admin" */}
             <Route index element={<AdminAnalytics />} />
+            <Route path="users" element={<RegisteredUsers />} />
             <Route path="inquiries" element={<InquiryDesk />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>

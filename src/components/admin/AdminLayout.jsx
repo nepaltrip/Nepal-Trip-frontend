@@ -9,7 +9,8 @@ import {
     X,
     Settings,
     Shield,
-    Compass
+    Compass,
+    Users
 } from "lucide-react";
 
 export function AdminLayout() {
@@ -29,6 +30,7 @@ export function AdminLayout() {
     const adminLinks = [
         { label: "Dashboard", to: "/admin", icon: LayoutDashboard },
         { label: "Inquiries", to: "/admin/inquiries", icon: MessageSquare },
+        { label: "Users", to: "/admin/users", icon: Users },
         { label: "Settings", to: "/admin/settings", icon: Settings },
     ];
 
