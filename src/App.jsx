@@ -3,10 +3,13 @@ import { BrowserRouter, Routes, Route, useLocation, Outlet } from 'react-router-
 import { Toaster } from 'sonner';
 import { Navbar } from './components/site/Navbar';
 import { Footer } from './components/site/Footer';
-import { AdminLayout } from './components/admin/AdminLayout'; // Adjust path as needed
+import { AdminLayout } from './components/admin/AdminLayout';
 import './App.css';
 import RegisteredUsers from './pages/Admin/RegisteredUsers';
 import { SuperAdminLayout } from './components/superadmin/SuperAdminLayout';
+
+// PWA Virtual Register Hook
+import { useRegisterSW } from 'virtual:pwa-register/react';
 
 // ==========================================
 // 1. Lazy Load Public Pages
@@ -36,7 +39,7 @@ const SuperAdminUsers = lazy(() => import('./pages/SuperAdmin/SuperAdminUsers'))
 const SuperAdminSettings = lazy(() => import('./pages/SuperAdmin/SuperAdminSettings'));
 
 // ==========================================
-// 3. Global Scroll To Top
+// 4. Global Scroll To Top
 // ==========================================
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -47,7 +50,31 @@ function ScrollToTop() {
 }
 
 // ==========================================
-// 4. Fallback Loader
+// 5. PWA Update Notification Component
+// ==========================================
+function UpdateNotification() {
+  const {
+    needRefresh: [needRefresh],
+    updateServiceWorker,
+  } = useRegisterSW();
+
+  if (!needRefresh) return null;
+
+  return (
+    <div className="fixed bottom-4 right-4 z-100 bg-white p-4 rounded-xl shadow-xl border border-border/40 flex items-center gap-4">
+      <span className="text-sm font-semibold text-slate-800">New version available!</span>
+      <button
+        onClick={() => updateServiceWorker(true)}
+        className="bg-[#2A5244] hover:bg-[#1f3f34] text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors"
+      >
+        Reload
+      </button>
+    </div>
+  );
+}
+
+// ==========================================
+// 6. Fallback Loader
 // ==========================================
 const PageLoader = () => (
   <div className="fixed inset-0 z-100 flex h-screen w-full flex-col items-center justify-center bg-[#FDFBF7]">
@@ -77,7 +104,7 @@ const PageLoader = () => (
 );
 
 // ==========================================
-// 5. Global Public Layout (Using Outlet)
+// 7. Global Public Layout (Using Outlet)
 // ==========================================
 function PublicLayout() {
   const [settings] = useState({
@@ -92,7 +119,7 @@ function PublicLayout() {
     <div className="flex min-h-screen flex-col bg-linear-to-b from-[#FDFBF7] to-[#EAE9E6] text-foreground">
       <Navbar brand={settings.brand_name} />
       <main className="flex-1 animate-in fade-in duration-700">
-        <Outlet /> {/* Child routes render here */}
+        <Outlet />
       </main>
       <Footer settings={settings} />
     </div>
@@ -100,12 +127,13 @@ function PublicLayout() {
 }
 
 // ==========================================
-// 6. Main App Component
+// 8. Main App Component
 // ==========================================
 function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
+      <UpdateNotification />
       <Toaster position="top-center" richColors />
 
       <Suspense fallback={<PageLoader />}>
@@ -125,7 +153,6 @@ function App() {
 
           {/* --- ADMIN ROUTES --- */}
           <Route path="/admin" element={<AdminLayout />}>
-            {/* The "index" route maps to exactly "/admin" */}
             <Route index element={<AdminAnalytics />} />
             <Route path="users" element={<RegisteredUsers />} />
             <Route path="inquiries" element={<InquiryDesk />} />
