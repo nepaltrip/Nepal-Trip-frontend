@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 
 export default function Contact() {
@@ -32,7 +32,7 @@ export default function Contact() {
 
         setSubmitting(true);
         try {
-            await new Promise(resolve => setTimeout(resolve, 1500)); 
+            await new Promise(resolve => setTimeout(resolve, 1500));
             toast.success("Message sent! We'll be in touch soon.");
             e.target.reset();
         } catch (error) {
@@ -45,7 +45,7 @@ export default function Contact() {
     return (
         <div className="w-full bg-background min-h-[calc(100dvh-4rem)] py-12 md:py-20 font-sans">
             <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
-                
+
                 <div className="text-center mb-16">
                     <p className="font-serif text-xs uppercase tracking-widest text-primary mb-3">Say hello</p>
                     <h1 className="font-serif text-4xl sm:text-6xl font-bold text-foreground">Let's plan your journey</h1>
@@ -55,7 +55,7 @@ export default function Contact() {
                 </div>
 
                 <div className="grid gap-12 lg:grid-cols-12 items-start">
-                    
+
                     <div className="lg:col-span-5 space-y-8">
                         <div className="bg-card p-8 rounded-3xl border border-border/50 shadow-sm">
                             <h3 className="font-serif text-2xl font-bold mb-6">Contact Details</h3>
@@ -83,10 +83,10 @@ export default function Contact() {
                                 </a>
 
                                 {/* Map: Opens Google Maps */}
-                                <a 
-                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(settings.contact_address)}`} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer" 
+                                <a
+                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(settings.contact_address)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
                                     className="flex gap-4 group"
                                 >
                                     <div className="p-3 bg-primary/10 text-primary rounded-xl group-hover:bg-primary group-hover:text-white transition-colors">
@@ -101,11 +101,11 @@ export default function Contact() {
                         </div>
                     </div>
 
-                    <motion.form 
+                    <motion.form
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        onSubmit={onSubmit} 
+                        onSubmit={onSubmit}
                         className="lg:col-span-7 space-y-6 bg-card p-8 md:p-10 rounded-3xl border border-border/50 shadow-xl"
                     >
                         <div className="grid md:grid-cols-2 gap-6">
@@ -135,9 +135,9 @@ export default function Contact() {
                             <Textarea id="message" name="message" rows={6} placeholder="How can we help you plan your trip?" className="resize-none" required />
                         </div>
 
-                        <Button 
-                            type="submit" 
-                            disabled={submitting} 
+                        <Button
+                            type="submit"
+                            disabled={submitting}
                             className="w-full h-14 rounded-xl text-lg font-bold shadow-lg transition-all hover:scale-[1.01] active:scale-[0.98] flex items-center gap-2"
                         >
                             {submitting ? (
