@@ -7,17 +7,12 @@ import { Button } from "../../components/ui/button";
 import { InquiryDialog } from "../../components/site/InquiryDialog";
 import { InlineEditor } from "../../components/admin/InlineEditor";
 import api from "../../api/axios";
+import { toast } from "react-toastify"; // Added for elegant alerts
 
-// Helper to render Lucide icons dynamically (Upgraded for better text matching)
 const DynamicIcon = ({ name, className }) => {
     if (!name) return <Icons.HelpCircle className={className} />;
-
-    // Auto-capitalize the first letter in case the user types "compass" instead of "Compass"
     const formattedName = name.charAt(0).toUpperCase() + name.slice(1);
-
-    // Check exact match first, then capitalized, fallback to HelpCircle if neither exists
     const Icon = Icons[name] || Icons[formattedName] || Icons.HelpCircle;
-
     return <Icon className={className} />;
 };
 
@@ -47,21 +42,19 @@ const HeroContentSkeleton = () => (
     </div>
 );
 
-// --- Default Configuration (Fully Populated Template) ---
+// --- Default Configuration ---
 const defaultSettings = {
     tagline: "CURATED JOURNEYS, UNFORGETTABLE MEMORIES",
     heroTitle: "Journeys crafted for the way you travel",
     heroSubtitle: "Handpicked tour packages across breathtaking destinations.",
     heroVideoUrl: "/nepal-landscape.mp4",
     heroVideoMobileUrl: "/nepal-portrait.mp4",
-
     whyUsTitle: "Why Travel With Us?",
     whyUsCards: [
         { _id: "temp1", icon: "Compass", title: "Handcrafted itineraries", body: "Every trip is designed around what you love." },
         { _id: "temp2", icon: "ShieldCheck", title: "Trusted since 2015", body: "Thousands of travelers, five-star reviews." },
         { _id: "temp3", icon: "Heart", title: "Local partners", body: "We work with local guides and hosts." }
     ],
-
     galleryTagline: "Through our lens",
     galleryTitle: "Glimpses of Nepal",
     galleryPreview: [
@@ -70,10 +63,8 @@ const defaultSettings = {
         "https://images.unsplash.com/photo-1518002054494-3a6f94352e9d?q=80&w=800&auto=format&fit=crop",
         "https://images.unsplash.com/photo-1605640840605-14ac1855827b?q=80&w=800&auto=format&fit=crop"
     ],
-
     testimonialsTagline: "Kind words",
     testimonialsTitle: "Loved by travelers",
-
     showCtaCard: true,
     ctaSubtitle: "Know before you go",
     ctaTitle: "Haven't decided where to go yet? Let's fix that.",
@@ -81,7 +72,6 @@ const defaultSettings = {
 };
 
 export default function Home() {
-    // Redux Selectors for Role Validation
     const { user, isAuthenticated } = useSelector((state) => state.auth);
     const isSuperAdmin = isAuthenticated && user?.role === "SuperAdmin";
 
@@ -90,13 +80,15 @@ export default function Home() {
     const [testimonials, setTestimonials] = useState([]);
     const [isMounted, setIsMounted] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
-
     const [settings, setSettings] = useState(defaultSettings);
+
+    // Modal State
+    const [showResetModal, setShowResetModal] = useState(false);
+    const [isResetting, setIsResetting] = useState(false);
 
     const desktopVideoRef = useRef(null);
     const mobileVideoRef = useRef(null);
 
-    // Image fallback handler for broken URLs
     const handleImageError = (e) => {
         e.target.src = "https://placehold.co/800x600/e2e8f0/64748b?text=Image+Unavailable";
     };
@@ -127,7 +119,7 @@ export default function Home() {
             } catch (error) {
                 console.error("Layout fetch failure:", error.message);
             } finally {
-                setIsLoadingContent(false); // FIXED LOADING STATE HERE
+                setIsLoadingContent(false);
             }
         };
 
@@ -191,12 +183,27 @@ export default function Home() {
     const handleAddGalleryImage = () => updateGalleryArray([...settings.galleryPreview, "https://placehold.co/800x600?text=Paste+Image+URL"]);
     const handleDeleteGalleryImage = (index) => updateGalleryArray(settings.galleryPreview.filter((_, i) => i !== index));
 
-    // --- Testimonials CRUD Handlers ---
     const handleAddTestimonial = () => setTestimonials([...testimonials, { _id: Date.now().toString(), rating: 5, message: "New review message", name: "Name", location: "City" }]);
     const handleDeleteTestimonial = (id) => setTestimonials(testimonials.filter(t => t._id !== id));
     const handleUpdateTestimonial = (id, field, value) => setTestimonials(testimonials.map(t => t._id === id ? { ...t, [field]: value } : t));
 
-    // Visibility Logic
+    // --- Emergency Restore Feature ---
+    const handleRestoreDefaults = async () => {
+        setIsResetting(true);
+        try {
+            await api.put("/content/global", defaultSettings);
+            setSettings(defaultSettings);
+            toast.success("Home page dummy data restored successfully!");
+            setShowResetModal(false);
+            setTimeout(() => window.location.reload(), 1500);
+        } catch (error) {
+            console.error("Failed to restore defaults:", error);
+            toast.error("Failed to restore default data.");
+        } finally {
+            setIsResetting(false);
+        }
+    };
+
     const showWhyUs = settings.whyUsCards.length > 0 || !isMobile;
     const showGallery = settings.galleryPreview.length > 0 || !isMobile;
     const showTestimonials = testimonials.length > 0 || !isMobile;
@@ -282,7 +289,6 @@ export default function Home() {
                                     </button>
                                 )}
 
-                                {/* DYNAMIC ICON EDITING ADDED HERE */}
                                 <div className="flex items-center gap-3">
                                     <DynamicIcon name={card.icon} className="h-8 w-8 text-[#FA6D16]" />
                                     {isSuperAdmin && !isMobile && (
@@ -488,6 +494,44 @@ export default function Home() {
                         </div>
                     </section>
                 )
+            )}
+
+            {/* Floating Restore Button & Beautiful Dialog */}
+            {isSuperAdmin && (
+                <>
+                    <div className="fixed bottom-6 right-6 z-50">
+                        <Button
+                            onClick={() => setShowResetModal(true)}
+                            variant="destructive"
+                            className="shadow-2xl font-bold rounded-full px-6 flex items-center gap-2"
+                        >
+                            <Icons.RotateCcw className="h-4 w-4" /> Reset Data
+                        </Button>
+                    </div>
+
+                    {showResetModal && (
+                        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                            <div className="bg-card border border-border/50 rounded-2xl shadow-2xl max-w-md w-full p-6 text-center transform animate-in zoom-in-95 duration-200">
+                                <div className="mx-auto w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
+                                    <Icons.AlertTriangle className="h-8 w-8 text-red-500" />
+                                </div>
+                                <h3 className="font-serif text-2xl font-bold text-foreground mb-2">Restore Default Data?</h3>
+                                <p className="text-muted-foreground text-sm mb-6 leading-relaxed">
+                                    This will overwrite the current live database with the original placeholder content. Any custom changes you've made to this page will be lost.
+                                </p>
+                                <div className="flex gap-3 justify-center">
+                                    <Button variant="outline" onClick={() => setShowResetModal(false)} disabled={isResetting} className="rounded-xl w-full">
+                                        Cancel
+                                    </Button>
+                                    <Button onClick={handleRestoreDefaults} disabled={isResetting} className="bg-red-500 hover:bg-red-600 text-white rounded-xl w-full flex items-center justify-center">
+                                        {isResetting ? <Icons.Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                        Yes, Restore
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </>
             )}
         </div>
     );
