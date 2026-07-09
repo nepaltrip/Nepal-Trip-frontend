@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import * as Icons from "lucide-react";
 import { ArrowRight, Star, Map, Plus, Trash2, ImageOff } from "lucide-react";
@@ -7,9 +8,16 @@ import { InquiryDialog } from "../../components/site/InquiryDialog";
 import { InlineEditor } from "../../components/admin/InlineEditor";
 import api from "../../api/axios";
 
-// Helper to render Lucide icons dynamically
+// Helper to render Lucide icons dynamically (Upgraded for better text matching)
 const DynamicIcon = ({ name, className }) => {
-    const Icon = Icons[name] || Icons.HelpCircle;
+    if (!name) return <Icons.HelpCircle className={className} />;
+
+    // Auto-capitalize the first letter in case the user types "compass" instead of "Compass"
+    const formattedName = name.charAt(0).toUpperCase() + name.slice(1);
+
+    // Check exact match first, then capitalized, fallback to HelpCircle if neither exists
+    const Icon = Icons[name] || Icons[formattedName] || Icons.HelpCircle;
+
     return <Icon className={className} />;
 };
 
@@ -73,6 +81,10 @@ const defaultSettings = {
 };
 
 export default function Home() {
+    // Redux Selectors for Role Validation
+    const { user, isAuthenticated } = useSelector((state) => state.auth);
+    const isSuperAdmin = isAuthenticated && user?.role === "SuperAdmin";
+
     const [isLoadingContent, setIsLoadingContent] = useState(true);
     const [isLoadingTestimonials, setIsLoadingTestimonials] = useState(true);
     const [testimonials, setTestimonials] = useState([]);
@@ -105,24 +117,22 @@ export default function Home() {
     }, [settings.heroVideoMobileUrl]);
 
     useEffect(() => {
-        document.title = "Nepal Trip — Premium Headless CMS Travel Cura";
+        document.title = "Nepal Trip — Premium Headless CMS Travel";
         const mountTimer = setTimeout(() => setIsMounted(true), 50);
 
         const fetchGlobalContent = async () => {
             try {
                 const { data } = await api.get("/content/global");
-                // Only merge properties that exist in the DB, keeping defaults for missing ones
                 if (data) setSettings(prev => ({ ...prev, ...data }));
             } catch (error) {
                 console.error("Layout fetch failure:", error.message);
             } finally {
-                setIsLoadingContent(false);
+                setIsLoadingContent(false); // FIXED LOADING STATE HERE
             }
         };
 
         const fetchTestimonials = async () => {
             try {
-                // Mocking data for now. Connect to your DB when ready.
                 const mockDbTestimonials = [
                     { _id: "t1", rating: 5, message: "Flawlessly planned!", name: "Aman M.", location: "Delhi" },
                     { _id: "t2", rating: 5, message: "Perfect pacing.", name: "Priya S.", location: "Mumbai" },
@@ -149,7 +159,6 @@ export default function Home() {
         }
     };
 
-    // Safe render function: If database returns undefined/null, forcefully use defaultSettings so text doesn't vanish
     const renderEditableText = (fieldKey, type = "text") => {
         const displayValue = settings[fieldKey] || defaultSettings[fieldKey] || "";
         if (isMobile) return <>{displayValue}</>;
@@ -187,8 +196,7 @@ export default function Home() {
     const handleDeleteTestimonial = (id) => setTestimonials(testimonials.filter(t => t._id !== id));
     const handleUpdateTestimonial = (id, field, value) => setTestimonials(testimonials.map(t => t._id === id ? { ...t, [field]: value } : t));
 
-
-    // Visibility Logic: If array is empty AND user is on mobile (viewer), don't render the section.
+    // Visibility Logic
     const showWhyUs = settings.whyUsCards.length > 0 || !isMobile;
     const showGallery = settings.galleryPreview.length > 0 || !isMobile;
     const showTestimonials = testimonials.length > 0 || !isMobile;
@@ -198,7 +206,7 @@ export default function Home() {
 
             {/* Hero Section */}
             <section className="relative isolate overflow-hidden min-h-[80vh] flex flex-col justify-center bg-black group">
-                {!isMobile && (
+                {isSuperAdmin && !isMobile && (
                     <div className="absolute top-24 right-8 z-50 bg-black/80 p-4 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-3 border border-white/20">
                         <p className="text-white text-xs font-bold uppercase tracking-wider">Edit Background Videos</p>
                         <div className="flex flex-col gap-1 text-xs">
@@ -268,12 +276,22 @@ export default function Home() {
                     <div className="grid gap-8 md:grid-cols-3">
                         {settings.whyUsCards.map((card, idx) => (
                             <div key={card._id || idx} className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm hover:shadow-md transition-shadow relative group">
-                                {!isMobile && (
+                                {isSuperAdmin && !isMobile && (
                                     <button onClick={() => handleDeleteWhyUsCard(idx)} className="absolute top-4 right-4 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <Trash2 className="h-4 w-4" />
                                     </button>
                                 )}
-                                <DynamicIcon name={card.icon} className="h-8 w-8 text-[#FA6D16]" />
+
+                                {/* DYNAMIC ICON EDITING ADDED HERE */}
+                                <div className="flex items-center gap-3">
+                                    <DynamicIcon name={card.icon} className="h-8 w-8 text-[#FA6D16]" />
+                                    {isSuperAdmin && !isMobile && (
+                                        <div className="text-[11px] font-mono bg-muted/40 text-muted-foreground px-2 py-1 rounded border border-border/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                                            Icon: <InlineEditor value={card.icon || "Compass"} onSave={(val) => handleUpdateWhyUsCard(idx, "icon", val)} />
+                                        </div>
+                                    )}
+                                </div>
+
                                 <h3 className="mt-4 font-serif text-xl text-foreground font-semibold">
                                     {isMobile ? card.title : <InlineEditor value={card.title} onSave={(val) => handleUpdateWhyUsCard(idx, "title", val)} />}
                                 </h3>
@@ -282,7 +300,7 @@ export default function Home() {
                                 </p>
                             </div>
                         ))}
-                        {!isMobile && (
+                        {isSuperAdmin && !isMobile && (
                             <div onClick={handleAddWhyUsCard} className="rounded-2xl border-2 border-dashed border-border/60 bg-transparent p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors opacity-60 hover:opacity-100 min-h-40">
                                 <Plus className="h-8 w-8 text-muted-foreground mb-2" />
                                 <span className="text-sm font-medium text-muted-foreground">Add Feature Card</span>
@@ -306,7 +324,7 @@ export default function Home() {
                                 </h2>
                             </div>
                             <div className="flex gap-4">
-                                {!isMobile && (
+                                {isSuperAdmin && !isMobile && (
                                     <Button onClick={handleAddGalleryImage} variant="outline" className="font-bold rounded-full">
                                         <Plus className="mr-2 h-4 w-4" /> Add Image
                                     </Button>
@@ -331,7 +349,7 @@ export default function Home() {
                                         className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                                         loading="lazy"
                                     />
-                                    {!isMobile && (
+                                    {isSuperAdmin && !isMobile && (
                                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex flex-col justify-center items-center gap-3">
                                             <div className="bg-white p-2 rounded text-black w-11/12 max-w-xs shadow-lg">
                                                 <InlineEditor
@@ -351,7 +369,7 @@ export default function Home() {
                                 </div>
                             </div>
                         ))}
-                        {!isMobile && settings.galleryPreview.length === 0 && (
+                        {isSuperAdmin && !isMobile && settings.galleryPreview.length === 0 && (
                             <div onClick={handleAddGalleryImage} className="aspect-4/3 rounded-2xl border-2 border-dashed border-border/60 bg-transparent flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors opacity-60 hover:opacity-100">
                                 <ImageOff className="h-8 w-8 text-muted-foreground mb-2" />
                                 <span className="text-sm font-medium text-muted-foreground">Gallery is empty. Click to add.</span>
@@ -376,7 +394,7 @@ export default function Home() {
                                     {renderEditableText("testimonialsTitle")}
                                 </h2>
                             </div>
-                            {!isMobile && (
+                            {isSuperAdmin && !isMobile && (
                                 <Button onClick={handleAddTestimonial} variant="outline" className="rounded-full">
                                     <Plus className="mr-2 h-4 w-4" /> Add Review
                                 </Button>
@@ -386,7 +404,7 @@ export default function Home() {
                         <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                             {testimonials.map((t) => (
                                 <blockquote key={t._id} className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm hover:shadow-md transition-shadow relative group">
-                                    {!isMobile && (
+                                    {isSuperAdmin && !isMobile && (
                                         <button onClick={() => handleDeleteTestimonial(t._id)} className="absolute top-4 right-4 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                                             <Trash2 className="h-4 w-4" />
                                         </button>
@@ -410,7 +428,7 @@ export default function Home() {
                                     </footer>
                                 </blockquote>
                             ))}
-                            {!isMobile && testimonials.length === 0 && (
+                            {isSuperAdmin && !isMobile && testimonials.length === 0 && (
                                 <div onClick={handleAddTestimonial} className="rounded-2xl border-2 border-dashed border-border/60 bg-transparent flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors opacity-60 hover:opacity-100 min-h-37.5">
                                     <Plus className="h-8 w-8 text-muted-foreground mb-2" />
                                     <span className="text-sm font-medium text-muted-foreground">No reviews yet. Click to add one.</span>
@@ -421,10 +439,10 @@ export default function Home() {
                 </section>
             )}
 
-            {/* Bottom Funnel Interactive Call to Action Panel */}
+            {/* Bottom Funnel Call to Action Panel */}
             {settings.showCtaCard !== false ? (
                 <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 relative group">
-                    {!isMobile && (
+                    {isSuperAdmin && !isMobile && (
                         <button
                             onClick={() => handleCMSFieldSave("showCtaCard", false)}
                             className="absolute top-24 right-12 z-50 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity bg-white p-2 rounded-full shadow-lg"
@@ -462,7 +480,7 @@ export default function Home() {
                     </div>
                 </section>
             ) : (
-                !isMobile && (
+                isSuperAdmin && !isMobile && (
                     <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
                         <div onClick={() => handleCMSFieldSave("showCtaCard", true)} className="rounded-[2rem] border-2 border-dashed border-border/60 bg-transparent flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors opacity-60 hover:opacity-100 min-h-37.5">
                             <Plus className="h-8 w-8 text-muted-foreground mb-2" />
