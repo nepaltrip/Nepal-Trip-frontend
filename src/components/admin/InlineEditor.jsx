@@ -86,7 +86,7 @@ export function InlineEditor({
                     <button
                         onClick={handleSave}
                         disabled={isSaving}
-                        className="p-1.5 bg-emerald-100 text-emerald-700 rounded-md hover:bg-emerald-200 transition-colors shadow-sm flex items-center justify-center min-w-[32px]"
+                        className="p-1.5 bg-emerald-100 text-emerald-700 rounded-md hover:bg-emerald-200 transition-colors shadow-sm flex items-center justify-center min-w-8"
                     >
                         {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                     </button>
