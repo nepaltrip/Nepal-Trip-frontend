@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { Check, X, Clock, MapPin, ArrowLeft, ChevronDown, Image as ImageIcon, Trash2, Plus, Settings2, Pencil, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -208,8 +208,13 @@ const ItineraryDay = ({ dayObj, index, isFirst, isLast, activeGodMode, onUpdate,
 export default function PackageDetail() {
     const { slug } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const { user, isAuthenticated } = useSelector((state) => state.auth);
     const isSuperAdmin = isAuthenticated && user?.role === "SuperAdmin";
+
+    const backRoute = location.state?.from === 'discover' ? '/discover' : '/packages';
+    const backText = location.state?.from === 'discover' ? 'Back to Discover' : 'Back to Packages';
+    const [selectedTier, setSelectedTier] = useState(location.state?.tier || 'Gold');
 
     const [isDesktop, setIsDesktop] = useState(true);
     useEffect(() => {
@@ -218,9 +223,17 @@ export default function PackageDetail() {
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
     }, []);
-    const activeGodMode = isSuperAdmin && isDesktop;
 
     const [pkg, setPkg] = useState(null);
+    useEffect(() => {
+        if (pkg) {
+            if (pkg.price_gold && !pkg.price_platinum) setSelectedTier('Gold');
+            if (!pkg.price_gold && pkg.price_platinum) setSelectedTier('Platinum');
+        }
+    }, [pkg]);
+
+    const activeGodMode = isSuperAdmin && isDesktop;
+
     const [loading, setLoading] = useState(true);
 
     const [liveDesktop, setLiveDesktop] = useState("");
@@ -313,8 +326,8 @@ export default function PackageDetail() {
                 </div>
 
                 <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
-                    <Link to="/packages" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors bg-background/50 backdrop-blur-md px-4 py-2 rounded-full w-fit mb-6 shadow-sm border border-border/50">
-                        <ArrowLeft className="h-4 w-4" /> Back to explore
+                    <Link to={backRoute} className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors bg-background/50 backdrop-blur-md px-4 py-2 rounded-full w-fit mb-6 shadow-sm border border-border/50">
+                        <ArrowLeft className="h-4 w-4" /> {backText}
                     </Link>
 
                     <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -501,15 +514,41 @@ export default function PackageDetail() {
                         <div className="rounded-[2rem] border border-border bg-card p-6 shadow-xl relative overflow-hidden">
                             <div className="absolute top-0 right-0 -mt-16 -mr-16 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
 
+                            {/* --- NEW: TIER TOGGLE --- */}
+                            <div className="flex bg-muted p-1 rounded-xl mb-6 relative z-10">
+                                <button
+                                    onClick={() => setSelectedTier('Gold')}
+                                    disabled={!pkg.price_gold && !activeGodMode}
+                                    className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${selectedTier === 'Gold' ? 'bg-linear-to-br from-amber-200 to-amber-500 text-amber-950 shadow-md' : 'text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed'}`}
+                                >
+                                    Gold Tier
+                                </button>
+                                <button
+                                    onClick={() => setSelectedTier('Platinum')}
+                                    disabled={!pkg.price_platinum && !activeGodMode}
+                                    className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${selectedTier === 'Platinum' ? 'bg-linear-to-br from-slate-200 to-slate-400 text-slate-900 shadow-md' : 'text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed'}`}
+                                >
+                                    Platinum Tier
+                                </button>
+                            </div>
+
                             <p className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">Starting from</p>
                             <div className="mt-2 flex items-baseline gap-1 text-foreground">
-                                <span className="font-serif text-4xl md:text-5xl font-bold flex items-center">
-                                    ₹{activeGodMode ? <InlineEditor value={pkg.price_inr} type="number" onSave={(val) => handleUpdate("price_inr", Number(val))} /> : Number(pkg.price_inr).toLocaleString("en-IN")}
+                                <span className="font-serif text-4xl md:text-5xl font-bold flex items-center relative z-10">
+                                    ₹{activeGodMode ? (
+                                        <InlineEditor
+                                            value={selectedTier === 'Gold' ? pkg.price_gold : pkg.price_platinum}
+                                            type="number"
+                                            onSave={(val) => handleUpdate(selectedTier === 'Gold' ? 'price_gold' : 'price_platinum', Number(val))}
+                                        />
+                                    ) : (
+                                        Number(selectedTier === 'Gold' ? pkg.price_gold : pkg.price_platinum).toLocaleString("en-IN")
+                                    )}
                                 </span>
                             </div>
 
                             {/* Editable Price Subtitle */}
-                            <div className="text-sm text-muted-foreground mt-1">
+                            <div className="text-sm text-muted-foreground mt-1 relative z-10">
                                 {activeGodMode ? (
                                     <InlineEditor value={pkg.price_subtitle || "per person, taxes extra"} onSave={(val) => handleUpdate("price_subtitle", val)} />
                                 ) : (
@@ -520,7 +559,7 @@ export default function PackageDetail() {
                             <div className="mt-6 md:mt-8 space-y-3 relative z-10">
                                 <InquiryDialog
                                     packageId={pkg._id}
-                                    packageTitle={pkg.title}
+                                    packageTitle={`${pkg.title} (${selectedTier} Tier)`} // Passes the tier to the inquiry!
                                     trigger={
                                         <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12 md:h-14 rounded-xl text-base md:text-lg font-bold shadow-md transition-transform hover:scale-[1.02] active:scale-[0.98]">
                                             Book / Inquire now
@@ -530,7 +569,7 @@ export default function PackageDetail() {
                             </div>
 
                             {/* Editable Sidebar Features */}
-                            <div className="mt-6 md:mt-8 pt-5 md:pt-6 border-t border-border flex flex-col gap-2 md:gap-3 text-xs md:text-sm text-muted-foreground">
+                            <div className="mt-6 md:mt-8 pt-5 md:pt-6 border-t border-border flex flex-col gap-2 md:gap-3 text-xs md:text-sm text-muted-foreground relative z-10">
                                 {sidebarFeatures.map((feat, idx) => (
                                     <div key={idx} className="flex items-center gap-2 group">
                                         <Check size={16} className="text-primary shrink-0" />
