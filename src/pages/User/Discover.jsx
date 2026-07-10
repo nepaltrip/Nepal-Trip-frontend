@@ -195,8 +195,7 @@ const CylinderCard = ({ pkg, allPackages, index, activeIndex, dragX, navigate, i
 
     const handleGalleryClick = (e) => {
         e.stopPropagation();
-        localStorage.setItem("gallerySearch", pkg.destination);
-        navigate(`/gallery`);
+        navigate(`/gallery?destination=${encodeURIComponent(pkg.destination)}`);
     };
 
     return (
