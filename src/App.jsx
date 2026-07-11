@@ -11,6 +11,9 @@ import { SuperAdminLayout } from './components/superadmin/SuperAdminLayout';
 
 import { useDispatch } from 'react-redux';
 import { setCredentials, logOutState } from './store/slices/authSlice';
+// ✨ IMPORT YOUR UPLOAD ACTIONS AND COMPONENT HERE
+import { setUploadJob } from './store/slices/uploadSlice';
+import FloatingUploadManager from './components/Gallery/FloatingUploadManager';
 import api from './api/axios';
 
 // PWA Virtual Register Hook
@@ -131,12 +134,9 @@ function PublicLayout() {
 function App() {
   const dispatch = useDispatch();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-
-  // ✨ THE FIX: Prevents React 18 StrictMode from double-firing the refresh route
   const hasFetched = useRef(false);
 
   useEffect(() => {
-    // If this effect has already run, exit immediately
     if (hasFetched.current) return;
     hasFetched.current = true;
 
@@ -154,7 +154,7 @@ function App() {
     verifyUserSession();
   }, [dispatch]);
 
-  // Show your loader while checking auth in the background
+
   if (isCheckingAuth) {
     return <PageLoader />;
   }
@@ -163,6 +163,9 @@ function App() {
     <BrowserRouter>
       <ScrollToTop />
       <UpdateNotification />
+
+      {/* ✨ THE FIX: Render Upload Manager globally outside of Routes so it persists */}
+      <FloatingUploadManager />
 
       <ToastContainer
         position="top-right"

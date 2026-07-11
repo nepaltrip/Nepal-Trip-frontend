@@ -291,11 +291,89 @@ export default function PackageDetail() {
         handleUpdate("itinerary", newItin);
     };
 
+    // NEW SHIMMER UI REPLACING TRADITIONAL SPINNER
     if (loading) return (
-        <div className="w-full bg-background font-sans pb-20 flex justify-center items-center h-screen">
-            <Loader2 className="w-10 h-10 animate-spin text-primary/50" />
+        <div className="w-full bg-background font-sans pb-20">
+            {/* Hero Skeleton */}
+            <section className="relative w-full pt-28 pb-12 md:pt-40 md:pb-20 flex flex-col justify-end overflow-hidden bg-muted animate-pulse min-h-[50vh] md:min-h-[70vh]">
+                <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
+                    <div className="h-8 w-32 bg-foreground/10 rounded-full mb-6"></div>
+                    <div className="flex flex-wrap items-center gap-3 mb-4">
+                        <div className="h-6 w-24 bg-foreground/10 rounded-full"></div>
+                        <div className="h-6 w-32 bg-foreground/10 rounded-full"></div>
+                        <div className="h-6 w-36 bg-foreground/10 rounded-full"></div>
+                    </div>
+                    <div className="h-14 md:h-20 w-full max-w-2xl bg-foreground/10 rounded-2xl"></div>
+                </div>
+            </section>
+
+            {/* Content Skeleton */}
+            <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 animate-pulse">
+                <div className="grid gap-12 lg:grid-cols-3 lg:gap-16">
+                    <div className="lg:col-span-2 space-y-12 md:space-y-16">
+
+                        {/* Bento Gallery Skeleton */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 grid-rows-2 gap-2 md:gap-3 rounded-[1.5rem] md:rounded-[2rem] overflow-hidden shadow-lg h-70 sm:h-87.5 md:h-112.5">
+                            <div className="col-span-2 row-span-2 bg-muted/60"></div>
+                            <div className="hidden md:block bg-muted/60"></div>
+                            <div className="col-span-1 md:col-span-2 row-span-1 bg-muted/60"></div>
+                            <div className="hidden md:block bg-muted/60"></div>
+                        </div>
+
+                        {/* Overview Skeleton */}
+                        <div>
+                            <div className="h-8 w-1/3 bg-muted rounded-lg mb-6"></div>
+                            <div className="space-y-4">
+                                <div className="h-4 w-full bg-muted rounded"></div>
+                                <div className="h-4 w-full bg-muted rounded"></div>
+                                <div className="h-4 w-5/6 bg-muted rounded"></div>
+                            </div>
+                        </div>
+
+                        {/* Itinerary Skeleton */}
+                        <div>
+                            <div className="h-8 w-1/4 bg-muted rounded-lg mb-8"></div>
+                            <div className="space-y-8">
+                                {[1, 2, 3].map(i => (
+                                    <div key={i} className="flex gap-4">
+                                        <div className="w-6 h-6 rounded-full bg-muted shrink-0 relative top-1"></div>
+                                        <div className="w-full space-y-3">
+                                            <div className="h-6 w-1/3 bg-muted rounded-md mb-2"></div>
+                                            <div className="h-4 w-full bg-muted rounded"></div>
+                                            <div className="h-4 w-5/6 bg-muted rounded"></div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Floating Sidebar Skeleton */}
+                    <div className="lg:col-span-1">
+                        <div className="rounded-[2rem] border border-border bg-card p-6 shadow-xl sticky top-28">
+                            <div className="flex gap-2 mb-6">
+                                <div className="h-10 flex-1 bg-muted rounded-lg"></div>
+                                <div className="h-10 flex-1 bg-muted rounded-lg"></div>
+                            </div>
+                            <div className="h-3 w-20 bg-muted rounded mb-3"></div>
+                            <div className="h-10 md:h-12 w-40 bg-muted rounded mb-2"></div>
+                            <div className="h-4 w-32 bg-muted rounded mb-8"></div>
+                            <div className="h-12 md:h-14 w-full bg-muted rounded-xl mb-8"></div>
+                            <div className="space-y-4 pt-6 border-t border-border">
+                                {[1, 2, 3].map(i => (
+                                    <div key={i} className="flex items-center gap-3">
+                                        <div className="w-4 h-4 rounded-full bg-muted shrink-0"></div>
+                                        <div className="h-3 w-3/4 bg-muted rounded"></div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
     );
+
     if (!pkg) return null;
 
     // Fallbacks for arrays/text

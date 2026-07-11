@@ -182,17 +182,23 @@ export function Navbar({ brand = "Nepal Trip" }) {
 
                         {isAuthenticated ? (
                             <div className="relative z-50 ml-1 md:ml-2 pl-1 md:pl-3 md:border-l md:border-border/40" ref={profileRef}>
+                                {/* ✨ MODIFIED: Changed button layout to support name alongside avatar on desktop */}
                                 <button
                                     onClick={() => setIsProfileOpen(!isProfileOpen)}
-                                    className="flex h-8 w-8 items-center justify-center rounded-full border border-border/50 bg-background overflow-hidden hover:ring-2 hover:ring-[#FA6D16]/50 transition-all focus:outline-none"
+                                    className="flex items-center gap-2 focus:outline-none group transition-all"
                                 >
-                                    {user?.profilePic ? (
-                                        <img src={user.profilePic} alt={user.name} referrerPolicy="no-referrer" className="h-full w-full object-cover" />
-                                    ) : (
-                                        <div className="flex h-full w-full items-center justify-center bg-[#FA6D16] text-white font-bold text-xs">
-                                            {initial}
-                                        </div>
-                                    )}
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-full border border-border/50 bg-background overflow-hidden group-hover:ring-2 group-hover:ring-[#FA6D16]/50 transition-all">
+                                        {user?.profilePic ? (
+                                            <img src={user.profilePic} alt={user.name} referrerPolicy="no-referrer" className="h-full w-full object-cover" />
+                                        ) : (
+                                            <div className="flex h-full w-full items-center justify-center bg-[#FA6D16] text-white font-bold text-xs">
+                                                {initial}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <span className="hidden md:block text-sm font-semibold text-foreground group-hover:text-[#FA6D16] transition-colors">
+                                        {firstName}
+                                    </span>
                                 </button>
 
                                 <div className={`absolute right-0 top-full mt-3 w-64 z-50 rounded-2xl border border-border/50 bg-background/95 p-5 shadow-2xl backdrop-blur-xl transition-all duration-300 origin-top-right ${isProfileOpen ? "scale-100 opacity-100 visible" : "scale-95 opacity-0 invisible"}`}>
