@@ -638,6 +638,7 @@ export default function PackageDetail() {
                                 <InquiryDialog
                                     packageId={pkg._id}
                                     packageTitle={`${pkg.title} (${selectedTier} Tier)`} // Passes the tier to the inquiry!
+                                    source={`Package Detail - ${selectedTier} Tier`}
                                     trigger={
                                         <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12 md:h-14 rounded-xl text-base md:text-lg font-bold shadow-md transition-transform hover:scale-[1.02] active:scale-[0.98]">
                                             Book / Inquire now

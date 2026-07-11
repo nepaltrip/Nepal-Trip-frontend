@@ -2,13 +2,15 @@ import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { toast } from "react-toastify";
-// ✨ FIXED: Added 'User' to the imports for the mobile login icon
+import { io } from "socket.io-client"; // ✨ ADDED SOCKET.IO
+
 import { Shield, LogOut, Bell, MapPin, ChevronDown, X, Info, Image, MessageSquare, Phone, User } from "lucide-react";
 
 import { InquiryDialog } from "./InquiryDialog";
 import { LoginModal } from "./LoginModal";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { MobileDrawer } from "./MobileDrawer";
+import { NotificationPanel } from "./NotificationPanel"; // ✨ ADDED NOTIFICATION PANEL
 import { useLocationEngine } from "../../hooks/useLocationEngine";
 
 import api from "../../api/axios";
@@ -17,9 +19,11 @@ import { GeoLocationModal } from "../modal/GeoLocationModal";
 
 export function Navbar({ brand = "Nepal Trip" }) {
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+    const [unreadIndicator, setUnreadIndicator] = useState(false); // ✨ NEW STATE
     const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [latestNotification, setLatestNotification] = useState(null);
 
     // Ref to track the profile dropdown area
     const profileRef = useRef(null);
@@ -39,6 +43,32 @@ export function Navbar({ brand = "Nepal Trip" }) {
     const isAdmin = user?.role === "Admin" || user?.role === "SuperAdmin";
     const firstName = user?.name ? user.name.split(" ")[0] : "User";
     const initial = firstName.charAt(0).toUpperCase();
+
+    // ✨ SOCKET INITIALIZATION
+    useEffect(() => {
+        let socket;
+        if (isAuthenticated && user) {
+            socket = io(import.meta.env.VITE_API_URL);
+
+            // Register user identity and role to join correct rooms
+            socket.emit('register', { id: user.id || user._id, role: user.role });
+
+            // Listen for global push alerts
+            socket.on('new_notification', (notificationObject) => {
+                setUnreadIndicator(true);
+                setLatestNotification(notificationObject); // ✨ Save the incoming object
+                toast.info(`🔔 ${notificationObject.title}`);
+            });
+        }
+        return () => {
+            if (socket) socket.disconnect();
+        };
+    }, [isAuthenticated, user]);
+
+    // Clear unread indicator when panel opens
+    useEffect(() => {
+        if (isNotificationOpen) setUnreadIndicator(false);
+    }, [isNotificationOpen]);
 
     // Auto-prompt location on first visit with a 24-hour cooldown
     useEffect(() => {
@@ -176,13 +206,13 @@ export function Navbar({ brand = "Nepal Trip" }) {
                         {isAuthenticated && (
                             <button onClick={() => setIsNotificationOpen(true)} className="relative flex h-8 w-8 items-center justify-center rounded-full border border-border/30 text-foreground bg-background/50 hover:bg-muted transition-all">
                                 <Bell className="h-4 w-4" />
-                                <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />
+                                {/* ✨ DYNAMIC RED DOT */}
+                                {unreadIndicator && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />}
                             </button>
                         )}
 
                         {isAuthenticated ? (
                             <div className="relative z-50 ml-1 md:ml-2 pl-1 md:pl-3 md:border-l md:border-border/40" ref={profileRef}>
-                                {/* ✨ MODIFIED: Changed button layout to support name alongside avatar on desktop */}
                                 <button
                                     onClick={() => setIsProfileOpen(!isProfileOpen)}
                                     className="flex items-center gap-2 focus:outline-none group transition-all"
@@ -237,7 +267,6 @@ export function Navbar({ brand = "Nepal Trip" }) {
                             </div>
                         ) : (
                             <>
-                                {/* ✨ FIXED: Added Mobile Login Icon (Hidden on md and above) */}
                                 <div className="flex md:hidden items-center ml-1">
                                     <LoginModal
                                         trigger={
@@ -248,10 +277,9 @@ export function Navbar({ brand = "Nepal Trip" }) {
                                     />
                                 </div>
 
-                                {/* Desktop Login & Inquiry (Hidden on mobile) */}
                                 <div className="hidden md:flex items-center gap-3 border-l border-border/40 pl-3 ml-1">
                                     <LoginModal trigger={<button className="inline-flex h-9 items-center justify-center rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted transition-all">Log in</button>} />
-                                    <InquiryDialog trigger={<button className="inline-flex h-9 items-center justify-center rounded-lg bg-[#FA6D16] px-4 py-2 text-sm font-medium text-white hover:bg-[#E55B05] transition-all">Inquiry</button>} />
+                                    <InquiryDialog source="Navbar Desktop" trigger={<button className="inline-flex h-9 items-center justify-center rounded-lg bg-[#FA6D16] px-4 py-2 text-sm font-medium text-white hover:bg-[#E55B05] transition-all">Inquiry</button>} />
                                 </div>
                             </>
                         )}
@@ -272,7 +300,7 @@ export function Navbar({ brand = "Nepal Trip" }) {
             />
 
             <LoginModal open={forceOpenLogin} onOpenChange={setForceOpenLogin} trigger={<span className="hidden" />} />
-            <InquiryDialog open={forceOpenInquiry} onOpenChange={setForceOpenInquiry} trigger={<span className="hidden" />} />
+            <InquiryDialog source="Navbar Mobile Drawer" open={forceOpenInquiry} onOpenChange={setForceOpenInquiry} trigger={<span className="hidden" />} />
 
             <MobileBottomNav
                 isDrawerOpen={isMobileMenuOpen}
@@ -290,20 +318,13 @@ export function Navbar({ brand = "Nepal Trip" }) {
                 isLoading={isLoading}
             />
 
+            {/* ✨ Replaced the inline notification block with the dedicated Component */}
             {isAuthenticated && (
-                <div className={`fixed inset-0 z-120 transition-opacity duration-300 ${isNotificationOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}>
-                    <div className="absolute inset-0 bg-background/60 backdrop-blur-xs" onClick={() => setIsNotificationOpen(false)} />
-                    <div className={`fixed right-0 top-0 h-full w-full max-w-sm bg-card shadow-2xl border-l border-border/40 transition-transform duration-300 ease-in-out transform ${isNotificationOpen ? "translate-x-0" : "translate-x-full"}`}>
-                        <div className="flex items-center justify-between border-b p-4">
-                            <h2 className="font-serif text-base font-bold">Notifications</h2>
-                            <button onClick={() => setIsNotificationOpen(false)} className="p-1 rounded-full hover:bg-muted"><X className="h-4 w-4" /></button>
-                        </div>
-                        <div className="flex h-3/4 flex-col items-center justify-center text-center opacity-70 p-6">
-                            <Bell className="mb-4 h-9 w-9 text-muted-foreground animate-pulse" />
-                            <p className="text-xs font-semibold">Inbox Up to Date</p>
-                        </div>
-                    </div>
-                </div>
+                <NotificationPanel
+                    isOpen={isNotificationOpen}
+                    onClose={() => setIsNotificationOpen(false)}
+                    newNotification={latestNotification} // ✨ Pass it down!
+                />
             )}
         </>
     );

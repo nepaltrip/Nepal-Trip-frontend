@@ -9,9 +9,8 @@ import './App.css';
 import RegisteredUsers from './pages/Admin/RegisteredUsers';
 import { SuperAdminLayout } from './components/superadmin/SuperAdminLayout';
 
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux'; // ✨ Added useSelector
 import { setCredentials, logOutState } from './store/slices/authSlice';
-// ✨ IMPORT YOUR UPLOAD ACTIONS AND COMPONENT HERE
 import { setUploadJob } from './store/slices/uploadSlice';
 import FloatingUploadManager from './components/Gallery/FloatingUploadManager';
 import api from './api/axios';
@@ -20,7 +19,21 @@ import api from './api/axios';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
 // ==========================================
-// 1. Lazy Load Public Pages
+// Web Push Utility
+// ==========================================
+const urlBase64ToUint8Array = (base64String) => {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+};
+
+// ==========================================
+// Lazy Load Public Pages
 // ==========================================
 const Home = lazy(() => import('./pages/User/Home'));
 const About = lazy(() => import('./pages/User/About'));
@@ -32,14 +45,14 @@ const Gallery = lazy(() => import('./pages/User/Gallery'));
 const Discover = lazy(() => import('./pages/User/Discover'));
 
 // ==========================================
-// 2. Lazy Load Admin Pages
+// Lazy Load Admin Pages
 // ==========================================
 const AdminAnalytics = lazy(() => import('./pages/Admin/AdminAnalytics'));
 const InquiryDesk = lazy(() => import('./pages/Admin/InquiryDesk'));
 const AdminSettings = lazy(() => import('./pages/Admin/AdminSettings'));
 
 // ==========================================
-// 3. Lazy Load Super Admin Pages
+// Lazy Load Super Admin Pages
 // ==========================================
 const SuperAdminAnalytics = lazy(() => import('./pages/SuperAdmin/SuperAdminAnalytics'));
 const SuperAdminInquiries = lazy(() => import('./pages/SuperAdmin/SuperAdminInquiries'));
@@ -47,7 +60,7 @@ const SuperAdminUsers = lazy(() => import('./pages/SuperAdmin/SuperAdminUsers'))
 const SuperAdminSettings = lazy(() => import('./pages/SuperAdmin/SuperAdminSettings'));
 
 // ==========================================
-// 4. Global Scroll To Top
+// Global Scroll To Top
 // ==========================================
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -58,7 +71,7 @@ function ScrollToTop() {
 }
 
 // ==========================================
-// 5. PWA Update Notification Component
+// PWA Update Notification Component
 // ==========================================
 function UpdateNotification() {
   const {
@@ -82,7 +95,7 @@ function UpdateNotification() {
 }
 
 // ==========================================
-// 6. Fallback Loader
+// Fallback Loader
 // ==========================================
 const PageLoader = () => (
   <div className="fixed inset-0 z-100 flex h-screen w-full flex-col items-center justify-center bg-[#FDFBF7]">
@@ -104,7 +117,7 @@ const PageLoader = () => (
 );
 
 // ==========================================
-// 7. Global Public Layout (Using Outlet)
+// Global Public Layout
 // ==========================================
 function PublicLayout() {
   const [settings] = useState({
@@ -129,10 +142,11 @@ function PublicLayout() {
 }
 
 // ==========================================
-// 8. Main App Component
+// Main App Component
 // ==========================================
 function App() {
   const dispatch = useDispatch();
+  const { isAuthenticated } = useSelector((state) => state.auth); // ✨ Pull auth state
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const hasFetched = useRef(false);
 
@@ -154,6 +168,38 @@ function App() {
     verifyUserSession();
   }, [dispatch]);
 
+  // ✨ Web Push Subscription Logic
+  useEffect(() => {
+    const subscribeToWebPush = async () => {
+      // Run only if logged in and browser supports Service Workers
+      if (isAuthenticated && 'serviceWorker' in navigator && 'PushManager' in window) {
+        try {
+          const registration = await navigator.serviceWorker.ready;
+
+          const existingSubscription = await registration.pushManager.getSubscription();
+          if (existingSubscription) return;
+
+          // Ensure permissions are granted before subscribing
+          const permission = await Notification.requestPermission();
+          if (permission !== 'granted') return;
+
+          const publicVapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+
+          const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
+          });
+
+          await api.post('/notifications/subscribe-push', subscription);
+
+        } catch (error) {
+          console.error('Web Push Subscription Failed:', error);
+        }
+      }
+    };
+
+    subscribeToWebPush();
+  }, [isAuthenticated]);
 
   if (isCheckingAuth) {
     return <PageLoader />;
@@ -164,7 +210,6 @@ function App() {
       <ScrollToTop />
       <UpdateNotification />
 
-      {/* ✨ THE FIX: Render Upload Manager globally outside of Routes so it persists */}
       <FloatingUploadManager />
 
       <ToastContainer

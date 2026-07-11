@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
-import { Mail, Phone, MapPin, Send, Loader2, Plus, Trash2, RotateCcw, AlertTriangle, X } from "lucide-react";
+import { Mail, Phone, MapPin, Send, Loader2, AlertTriangle, RotateCcw } from "lucide-react";
 import { Input } from "../../components/ui/input";
 import { Textarea } from "../../components/ui/textarea";
 import { Label } from "../../components/ui/label";
 import { Button } from "../../components/ui/button";
 import { InlineEditor } from "../../components/admin/InlineEditor";
-import CustomSelect from "../../components/ui/CustomSelect";
 import { toast } from "react-toastify";
-import { motion, AnimatePresence } from "framer-motion"; // Added AnimatePresence for smooth exits
+import { motion, AnimatePresence } from "framer-motion";
 import api from "../../api/axios";
 
-// --- Default Configuration ---
+// --- Default Configuration (Form building elements completely removed) ---
 const defaultSettings = {
     page_tagline: "Say hello",
     page_title: "Let's plan your journey",
@@ -19,45 +18,29 @@ const defaultSettings = {
     contact_email: "info@nepaltrip.in",
     contact_phone: "+977-1-4000000",
     contact_address: "Thamel, Kathmandu, Nepal",
-    formFields: [
-        { _id: "f1", label: "Name", type: "text", required: true, options: "" },
-        { _id: "f2", label: "Email", type: "email", required: true, options: "" },
-        { _id: "f3", label: "Mobile No.", type: "tel", required: true, options: "" },
-        { _id: "f4", label: "Gender", type: "radio", required: false, options: "Male,Female,Other" },
-        { _id: "f5", label: "Preferred Travel Season", type: "checkbox", required: false, options: "Spring,Summer,Autumn,Winter" },
-        { _id: "f6", label: "Message", type: "textarea", required: true, options: "" }
-    ]
 };
-
-// Options specifically mapped for the Admin's "Add Field" CustomSelect
-const fieldTypeOptions = [
-    { value: "text", label: "Short Text (String)" },
-    { value: "number", label: "Number" },
-    { value: "email", label: "Email" },
-    { value: "tel", label: "Phone Number" },
-    { value: "textarea", label: "Long Text (Textarea)" },
-    { value: "radio", label: "Radio Buttons (Single Choice Pill)" },
-    { value: "checkbox", label: "Checkboxes (Multiple Choice Pill)" },
-    { value: "select", label: "Dropdown Menu (Custom Select)" }
-];
 
 export default function Contact() {
     const { user, isAuthenticated } = useSelector((state) => state.auth);
-    const isSuperAdmin = isAuthenticated && user?.role === "SuperAdmin";
+
+    // Ensure SuperAdmin functions only show on Desktop
+    const [isDesktop, setIsDesktop] = useState(true);
+    useEffect(() => {
+        const handleResize = () => setIsDesktop(window.innerWidth >= 1024);
+        handleResize();
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
+    const activeGodMode = isAuthenticated && user?.role === "SuperAdmin" && isDesktop;
 
     const [isLoading, setIsLoading] = useState(true);
     const [isMounted, setIsMounted] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [settings, setSettings] = useState(defaultSettings);
 
-    // Modal States
     const [showResetModal, setShowResetModal] = useState(false);
     const [isResetting, setIsResetting] = useState(false);
-
-    // Add Field Modal State
-    const [showAddFieldModal, setShowAddFieldModal] = useState(false);
-    const [newField, setNewField] = useState({ label: "", type: "text", required: false, options: "" });
-    const [optionInput, setOptionInput] = useState("");
 
     useEffect(() => {
         document.title = "Contact — NepalTrip";
@@ -89,66 +72,35 @@ export default function Contact() {
 
     const renderEditableText = (fieldKey, type = "text") => {
         const displayValue = settings[fieldKey] || defaultSettings[fieldKey] || "";
-        return <InlineEditor type={type} value={displayValue} onSave={(val) => handleCMSFieldSave(fieldKey, val)} />;
+        return activeGodMode ? (
+            <InlineEditor type={type} value={displayValue} onSave={(val) => handleCMSFieldSave(fieldKey, val)} />
+        ) : (
+            <span>{displayValue}</span>
+        );
     };
 
-    // --- Form Builder Handlers ---
-    const updateFormFields = async (newArray) => {
-        setSettings(prev => ({ ...prev, formFields: newArray }));
-        await handleCMSFieldSave("formFields", newArray);
-    };
-
-    const handleAddFormField = () => {
-        if (!newField.label.trim()) return toast.error("Field label is required.");
-        if (['radio', 'checkbox', 'select'].includes(newField.type) && !newField.options) {
-            return toast.error("Please add at least one option for this field type.");
-        }
-
-        updateFormFields([...settings.formFields, { ...newField, _id: Date.now().toString() }]);
-        setShowAddFieldModal(false);
-        setNewField({ label: "", type: "text", required: false, options: "" });
-        setOptionInput("");
-    };
-
-    const handleDeleteFormField = (index) => {
-        updateFormFields(settings.formFields.filter((_, i) => i !== index));
-    };
-
-    // --- Option Builder Helpers ---
-    const handleAddOption = (e) => {
-        e.preventDefault();
-        const trimmed = optionInput.trim();
-        if (!trimmed) return;
-
-        const currentOptions = newField.options ? newField.options.split(',').map(o => o.trim()) : [];
-        if (currentOptions.includes(trimmed)) {
-            return toast.warning("Option already exists.");
-        }
-
-        currentOptions.push(trimmed);
-        setNewField({ ...newField, options: currentOptions.join(',') });
-        setOptionInput("");
-    };
-
-    const handleRemoveOption = (optionToRemove) => {
-        const currentOptions = newField.options.split(',').map(o => o.trim());
-        const filteredOptions = currentOptions.filter(opt => opt !== optionToRemove);
-        setNewField({ ...newField, options: filteredOptions.join(',') });
-    };
-
-    // --- Form Submission Handler ---
+    // --- Unified Form Submission Handler ---
     const onSubmit = async (e) => {
         e.preventDefault();
         const fd = new FormData(e.currentTarget);
-        const data = Object.fromEntries(fd);
 
-        settings.formFields.filter(f => f.type === 'checkbox').forEach(field => {
-            data[field.label] = fd.getAll(field.label);
-        });
+        // Assemble matching object structure
+        const formData = {
+            name: fd.get("name"),
+            email: fd.get("email"),
+            phone: fd.get("phone"),
+            travel_date: fd.get("travel_date"),
+            travelers: fd.get("travelers"),
+            message: fd.get("message")
+        };
 
         setSubmitting(true);
         try {
-            await api.post("/inquiries", { formData: data });
+            // Sending payload mapped exactly to backend expectations with the source
+            await api.post("/inquiries", {
+                formData,
+                source: "Contact Page" // Hardcoded origin
+            });
             toast.success("Message sent! We'll be in touch soon.");
             e.target.reset();
         } catch (error) {
@@ -172,7 +124,35 @@ export default function Contact() {
         }
     };
 
-    if (isLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
+    // --- Shimmer UI Loader ---
+    if (isLoading) return (
+        <div className="w-full bg-background min-h-[calc(100dvh-4rem)] py-12 md:py-20 animate-pulse">
+            <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+                <div className="text-center mb-16 flex flex-col items-center">
+                    <div className="h-4 w-24 bg-muted rounded-full mb-4"></div>
+                    <div className="h-10 sm:h-14 w-3/4 max-w-md bg-muted rounded-xl mb-6"></div>
+                    <div className="h-6 w-full max-w-xl bg-muted rounded-lg"></div>
+                </div>
+                <div className="grid gap-12 lg:grid-cols-12 items-start">
+                    <div className="lg:col-span-5 space-y-8">
+                        <div className="bg-card p-8 rounded-3xl border border-border/50 h-80 flex flex-col gap-6">
+                            <div className="h-8 w-1/2 bg-muted rounded-md mb-2"></div>
+                            {[1, 2, 3].map(i => (
+                                <div key={i} className="flex gap-4 items-center">
+                                    <div className="h-11 w-11 rounded-xl bg-muted shrink-0"></div>
+                                    <div className="space-y-2 flex-1">
+                                        <div className="h-3 w-16 bg-muted rounded"></div>
+                                        <div className="h-4 w-3/4 bg-muted rounded"></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="lg:col-span-7 bg-card p-8 md:p-10 rounded-3xl border border-border/50 h-125"></div>
+                </div>
+            </div>
+        </div>
+    );
 
     return (
         <div className={`w-full transition-all duration-1000 ease-out transform ${isMounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
@@ -228,100 +208,55 @@ export default function Contact() {
                             </div>
                         </div>
 
-                        {/* Dynamic Form Builder */}
+                        {/* Standardized Form (Matches Inquiry Dialog Fields) */}
                         <motion.form
                             initial={{ opacity: 0, y: 20 }}
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
                             onSubmit={onSubmit}
-                            className="lg:col-span-7 space-y-6 bg-card p-8 md:p-10 rounded-3xl border border-border/50 shadow-xl"
+                            className="lg:col-span-7 space-y-4 bg-card p-8 md:p-10 rounded-3xl border border-border/50 shadow-xl"
                         >
-                            {settings.formFields.map((field, idx) => (
-                                <div key={field._id || idx} className="relative group grid gap-2">
-                                    {isSuperAdmin && (
-                                        <button
-                                            type="button"
-                                            onClick={() => handleDeleteFormField(idx)}
-                                            className="absolute -top-3 -right-3 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-20 bg-background shadow-md border border-border/50 p-1.5 rounded-full hover:scale-110"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
-                                    )}
+                            <div className="grid gap-2">
+                                <Label htmlFor="name" className="text-sm font-medium">Full name <span className="text-primary">*</span></Label>
+                                <Input id="name" name="name" required placeholder="John Doe" className="h-11 rounded-2xl transition-all hover:border-[#FA6D16]/50 focus:border-[#FA6D16] focus-visible:ring-[#FA6D16]/20" />
+                            </div>
 
-                                    <Label className="font-bold flex items-center gap-1 text-foreground/90 mb-1">
-                                        {field.label} {field.required && <span className="text-primary">*</span>}
-                                    </Label>
-
-                                    {/* Themed Input Rendering */}
-                                    {field.type === "textarea" ? (
-                                        <Textarea
-                                            name={field.label}
-                                            required={field.required}
-                                            rows={4}
-                                            className="resize-none rounded-xl transition-all duration-200 border-input hover:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary focus-visible:outline-hidden"
-                                            placeholder={`Enter your ${field.label.toLowerCase()}...`}
-                                        />
-
-                                    ) : field.type === "select" ? (
-                                        <CustomSelect
-                                            name={field.label}
-                                            options={field.options}
-                                            required={field.required}
-                                            placeholder={`Select your ${field.label.toLowerCase()}...`}
-                                        />
-
-                                    ) : (field.type === "radio" || field.type === "checkbox") ? (
-                                        <div className="flex flex-wrap gap-3">
-                                            {field.options.split(',').filter(Boolean).map((opt, i) => (
-                                                <label key={i} className="cursor-pointer group/pill select-none">
-                                                    <input
-                                                        type={field.type}
-                                                        name={field.label}
-                                                        value={opt.trim()}
-                                                        required={field.type === "radio" ? field.required : false}
-                                                        className="peer sr-only"
-                                                    />
-                                                    <div className="px-5 py-2 rounded-full border border-border/60 bg-background text-sm font-medium text-muted-foreground transition-all duration-200 
-                                                        peer-checked:bg-primary peer-checked:text-white peer-checked:border-primary peer-checked:shadow-md 
-                                                        hover:border-primary/50 flex items-center gap-2"
-                                                    >
-                                                        {opt.trim()}
-                                                    </div>
-                                                </label>
-                                            ))}
-                                        </div>
-
-                                    ) : (
-                                        <Input
-                                            type={field.type}
-                                            name={field.label}
-                                            required={field.required}
-                                            className="h-12 rounded-xl transition-all duration-200 border-input hover:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary focus-visible:outline-hidden"
-                                            placeholder={`Your ${field.label}...`}
-                                        />
-                                    )}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="email" className="text-sm font-medium">Email <span className="text-primary">*</span></Label>
+                                    <Input id="email" name="email" type="email" required placeholder="john@example.com" className="h-11 rounded-2xl transition-all hover:border-[#FA6D16]/50 focus:border-[#FA6D16] focus-visible:ring-[#FA6D16]/20" />
                                 </div>
-                            ))}
-
-                            {isSuperAdmin && (
-                                <div
-                                    onClick={() => setShowAddFieldModal(true)}
-                                    className="rounded-xl border-2 border-dashed border-border/60 bg-primary/5 flex flex-col items-center justify-center cursor-pointer hover:bg-primary/10 hover:border-primary/40 transition-colors p-6 mt-2"
-                                >
-                                    <Plus className="h-6 w-6 text-primary mb-2" />
-                                    <span className="text-sm font-bold text-primary tracking-wide">Add Custom Field</span>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="phone" className="text-sm font-medium">Phone</Label>
+                                    <Input id="phone" name="phone" type="tel" placeholder="+1 (555) 000-0000" className="h-11 rounded-2xl transition-all hover:border-[#FA6D16]/50 focus:border-[#FA6D16] focus-visible:ring-[#FA6D16]/20" />
                                 </div>
-                            )}
+                            </div>
 
-                            <Button type="submit" disabled={submitting} className="w-full h-14 rounded-xl text-lg font-bold shadow-lg transition-all hover:scale-[1.01] active:scale-[0.98] flex items-center gap-2 mt-4 bg-primary text-white hover:bg-primary/90">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="travel_date" className="text-sm font-medium">Travel date</Label>
+                                    <Input id="travel_date" name="travel_date" type="date" className="h-11 rounded-2xl transition-all hover:border-[#FA6D16]/50 focus:border-[#FA6D16] focus-visible:ring-[#FA6D16]/20" />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="travelers" className="text-sm font-medium">Travelers</Label>
+                                    <Input id="travelers" name="travelers" type="number" min={1} defaultValue={2} className="h-11 rounded-2xl transition-all hover:border-[#FA6D16]/50 focus:border-[#FA6D16] focus-visible:ring-[#FA6D16]/20" />
+                                </div>
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="message" className="text-sm font-medium">Message (optional)</Label>
+                                <Textarea id="message" name="message" rows={3} placeholder="Tell us about your dream trip..." className="rounded-2xl resize-none transition-all hover:border-[#FA6D16]/50 focus:border-[#FA6D16] focus-visible:ring-[#FA6D16]/20" />
+                            </div>
+
+                            <Button type="submit" disabled={submitting} className="w-full h-14 rounded-full text-lg font-bold shadow-lg transition-all hover:scale-[1.01] active:scale-[0.98] flex items-center justify-center gap-2 mt-4 bg-primary text-white hover:bg-primary/90">
                                 {submitting ? <><Loader2 className="animate-spin" /> Sending...</> : <><Send size={18} /> Send message</>}
                             </Button>
                         </motion.form>
                     </div>
                 </div>
 
-                {/* --- SuperAdmin Modals --- */}
-                {isSuperAdmin && (
+                {/* --- SuperAdmin Reset Modal --- */}
+                {activeGodMode && (
                     <>
                         <div className="fixed bottom-6 right-6 z-50">
                             <Button onClick={() => setShowResetModal(true)} variant="destructive" className="shadow-2xl font-bold rounded-full px-6 flex items-center gap-2">
@@ -329,89 +264,7 @@ export default function Contact() {
                             </Button>
                         </div>
 
-                        {/* Smooth Modals using AnimatePresence & Framer Motion */}
                         <AnimatePresence>
-                            {showAddFieldModal && (
-                                <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                                    <motion.div
-                                        initial={{ opacity: 0, scale: 0.95, y: 15 }}
-                                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                                        exit={{ opacity: 0, scale: 0.95, y: 15 }}
-                                        transition={{ duration: 0.2, ease: "easeOut" }}
-                                        className="bg-card border border-border/50 rounded-2xl shadow-2xl max-w-md w-full p-6 relative"
-                                    >
-                                        <h3 className="font-serif text-2xl font-bold mb-6 text-foreground">Build Form Field</h3>
-
-                                        <div className="space-y-5 relative z-20">
-                                            <div>
-                                                <Label className="text-muted-foreground font-bold">Field Label / Name</Label>
-                                                <Input
-                                                    placeholder="e.g. Number of Travelers"
-                                                    value={newField.label}
-                                                    onChange={e => setNewField({ ...newField, label: e.target.value })}
-                                                    className="mt-1 h-11 focus-visible:ring-primary focus-visible:border-primary rounded-xl"
-                                                />
-                                            </div>
-
-                                            <div className="relative z-30">
-                                                <Label className="text-muted-foreground font-bold mb-1 block">Input Type</Label>
-                                                <CustomSelect
-                                                    value={newField.type}
-                                                    onChange={e => {
-                                                        setNewField({ ...newField, type: e.target.value, options: "" });
-                                                        setOptionInput("");
-                                                    }}
-                                                    options={fieldTypeOptions}
-                                                />
-                                            </div>
-
-                                            {['radio', 'checkbox', 'select'].includes(newField.type) && (
-                                                <div className="bg-primary/5 p-4 rounded-xl border border-primary/20 space-y-3 relative z-10">
-                                                    <Label className="text-primary font-bold">Configure Options</Label>
-
-                                                    <div className="flex flex-wrap gap-2 min-h-8">
-                                                        {newField.options ? newField.options.split(',').filter(Boolean).map((opt, i) => (
-                                                            <span key={i} className="bg-primary text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-sm">
-                                                                {opt.trim()}
-                                                                <X size={12} className="cursor-pointer hover:scale-125 transition-transform" onClick={() => handleRemoveOption(opt.trim())} />
-                                                            </span>
-                                                        )) : <span className="text-xs text-muted-foreground italic">No options added yet...</span>}
-                                                    </div>
-
-                                                    <div className="flex gap-2">
-                                                        <Input
-                                                            placeholder="Type option and press Enter"
-                                                            value={optionInput}
-                                                            onChange={e => setOptionInput(e.target.value)}
-                                                            onKeyDown={e => e.key === 'Enter' && handleAddOption(e)}
-                                                            className="h-10 text-sm border-primary/30 focus-visible:ring-primary focus-visible:border-primary rounded-lg"
-                                                        />
-                                                        <Button type="button" onClick={handleAddOption} className="bg-primary/20 text-primary hover:bg-primary hover:text-white font-bold h-10 px-4 transition-colors rounded-lg">
-                                                            Add
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-border/50 hover:bg-muted/30 transition-colors">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={newField.required}
-                                                    onChange={e => setNewField({ ...newField, required: e.target.checked })}
-                                                    className="accent-primary w-5 h-5 rounded"
-                                                />
-                                                <span className="text-sm font-bold text-foreground">Make this field mandatory</span>
-                                            </label>
-                                        </div>
-
-                                        <div className="flex gap-3 justify-end mt-8 pt-4 border-t border-border/50">
-                                            <Button variant="ghost" onClick={() => setShowAddFieldModal(false)} className="rounded-xl font-bold">Cancel</Button>
-                                            <Button onClick={handleAddFormField} className="bg-primary text-white hover:bg-primary/90 rounded-xl font-bold px-6 shadow-md">Create Field</Button>
-                                        </div>
-                                    </motion.div>
-                                </div>
-                            )}
-
                             {showResetModal && (
                                 <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
                                     <motion.div
@@ -425,7 +278,7 @@ export default function Contact() {
                                             <AlertTriangle className="h-8 w-8 text-red-500" />
                                         </div>
                                         <h3 className="font-serif text-2xl font-bold mb-2">Restore Default Layout?</h3>
-                                        <p className="text-muted-foreground text-sm mb-6">This overwrites the live database with placeholder content and form fields.</p>
+                                        <p className="text-muted-foreground text-sm mb-6">This overwrites the live database with placeholder content.</p>
                                         <div className="flex gap-3 justify-center">
                                             <Button variant="outline" onClick={() => setShowResetModal(false)} disabled={isResetting} className="w-full font-bold rounded-xl">Cancel</Button>
                                             <Button onClick={handleRestoreDefaults} disabled={isResetting} className="bg-red-500 hover:bg-red-600 text-white w-full font-bold rounded-xl">

@@ -418,6 +418,7 @@ export default function Home() {
                             </p>
                             <div className="mt-8 flex flex-wrap gap-4">
                                 <InquiryDialog
+                                    source="Home Hero Section"
                                     trigger={
                                         <Button size="lg" className="bg-[#FA6D16] px-8 text-white hover:bg-[#E55B05] shadow-lg transition-transform active:scale-95 font-bold rounded-xl h-12">
                                             Plan my trip
