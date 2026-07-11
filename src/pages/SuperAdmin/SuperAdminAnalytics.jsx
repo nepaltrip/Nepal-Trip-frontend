@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from "react";
+import { useSelector } from "react-redux";
+import { io } from "socket.io-client";
+import api from "../../api/axios";
 import {
     Users,
     MessageSquare,
@@ -23,21 +26,6 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { UserDetailModal } from "../../components/modal/UserDetailModal";
 
-// ==========================================
-// DUMMY DATA (To be replaced with API calls)
-// ==========================================
-const kpiData = [
-    { id: "visitors", title: "Unique Visitors (30d)", value: "2,405", trend: "+12%", icon: Users, color: "text-[#2A5244]", bg: "bg-[#2A5244]/10", clickable: false },
-    { id: "inquiries", title: "Total Inquiries", value: "142", trend: "+5%", icon: MessageSquare, color: "text-[#2A5244]", bg: "bg-[#2A5244]/10", clickable: true },
-    { id: "pending", title: "Pending Replies", value: "8", trend: "Action Required", icon: Clock, color: "text-[#FA6D16]", bg: "bg-[#FA6D16]/10", clickable: true },
-];
-
-const mockInquiriesList = [
-    { id: 1, name: "Rahul Sharma", subject: "Everest Base Camp Availability", date: "2 hours ago", status: "pending" },
-    { id: 2, name: "Priya Patel", subject: "Custom Honeymoon Package", date: "5 hours ago", status: "pending" },
-    { id: 3, name: "Amit Kumar", subject: "Kathmandu Heritage Entry Fees", date: "1 day ago", status: "replied" },
-    { id: 4, name: "Sarah Jenkins", subject: "Dietary requirements on trek", date: "2 days ago", status: "replied" },
-];
 
 const discoverStats = [
     { vibe: "High Altitude Trekking", clicks: 840, galleryConversions: 320, avgTime: "4m 12s", bounceRate: "22%" },
@@ -52,7 +40,6 @@ const galleryStats = [
     { id: 3, title: "Patan Durbar Square", vibe: "Culture & City", clicks: 820, url: "https://images.unsplash.com/photo-1588714477688-cf28a50e94f7?q=80&w=400&auto=format&fit=crop" }
 ];
 
-// Generate 50 dummy media items for the "View More" modal
 const top50Media = Array.from({ length: 50 }).map((_, i) => ({
     id: `m-${i + 1}`,
     title: `Premium Media Asset ${i + 1}`,
@@ -96,6 +83,17 @@ const packageEngagement = [
 ];
 
 export default function SuperAdminAnalytics() {
+    const { user, isAuthenticated } = useSelector((state) => state.auth);
+
+
+    // ✨ REAL-TIME METRICS STATE
+    const [metrics, setMetrics] = useState({
+        uniqueVisitors: 2405, // Placeholder for 30d visitors
+        totalInquiries: 0,
+        pendingReplies: 0
+    });
+
+    const [inquiriesList, setInquiriesList] = useState([]);
     const [expandedRow, setExpandedRow] = useState(null);
     const [rowTab, setRowTab] = useState("auth");
 
@@ -107,6 +105,88 @@ export default function SuperAdminAnalytics() {
     // Full Screen Media State
     const [selectedMedia, setSelectedMedia] = useState(null);
 
+
+
+    // ✨ FETCH BASELINE & WIRE UP SOCKETS
+    const fetchBaselineMetrics = async () => {
+        try {
+            const { data } = await api.get('/superadmin/dashboard-counters');
+            setMetrics({
+                uniqueVisitors: data.uniqueVisitors || 0,
+                totalInquiries: data.totalInquiries || 0,
+                pendingReplies: data.pendingReplies || 0
+            });
+            if (data.recentInquiries) {
+                setInquiriesList(data.recentInquiries); // Populate the modal list
+            }
+        } catch (error) {
+            console.error("Failed to load dashboard metrics", error);
+        }
+    };
+    useEffect(() => {
+        fetchBaselineMetrics();
+
+        let socket;
+        if (isAuthenticated && user) {
+            socket = io(import.meta.env.VITE_API_URL);
+            socket.emit('register', { id: user.id || user._id, role: user.role });
+
+            // ✨ When an inquiry comes in or is replied to, instantly refetch to update numbers AND the lists
+            socket.on('dashboard_counter_update', (payload) => {
+                if (payload.action === 'live_visitor_update') {
+                    setMetrics(prev => ({
+                        ...prev,
+                        uniqueVisitors: payload.count // Smoothly rewrite visitor metrics count live
+                    }));
+                } else {
+                    // For everything else (inquiries, replies), fall back to the safe core master refetch
+                    fetchBaselineMetrics();
+                }
+            });
+        }
+
+        return () => {
+            if (socket) socket.disconnect();
+        };
+    }, [isAuthenticated, user]);
+
+    // ✨ DYNAMIC KPI DATA LINKED TO LIVE METRICS
+    const dynamicKpiData = [
+        {
+            id: "visitors",
+            title: "Unique Visitors (30d)",
+            value: metrics.uniqueVisitors.toLocaleString(),
+            trend: "Live Stream", // Indicates metrics are pulling cleanly from sockets
+            icon: Users,
+            color: "text-[#2A5244]",
+            bg: "bg-[#2A5244]/10",
+            clickable: false
+        },
+        {
+            id: "inquiries",
+            title: "Total Inquiries",
+            value: metrics.totalInquiries.toLocaleString(),
+            // Replaced dummy percentage because Total Inquiries is an 'All Time' metric
+            trend: "All Time",
+            icon: MessageSquare,
+            color: "text-[#2A5244]",
+            bg: "bg-[#2A5244]/10",
+            clickable: true
+        },
+        {
+            id: "pending",
+            title: "Pending Replies",
+            value: metrics.pendingReplies.toLocaleString(),
+            // ✨ LOGICAL CHECK: Only say "Action Required" if there are actual pending replies
+            trend: metrics.pendingReplies > 0 ? "Action Required" : "All Caught Up",
+            icon: Clock,
+            // ✨ LOGICAL CHECK: Turn the icon green if everything is replied to
+            color: metrics.pendingReplies > 0 ? "text-[#FA6D16]" : "text-emerald-600",
+            bg: metrics.pendingReplies > 0 ? "bg-[#FA6D16]/10" : "bg-emerald-100",
+            clickable: true
+        },
+    ];
+
     // Lock body scroll when any modal or full-screen viewer is active
     useEffect(() => {
         if (activeModal !== null || selectedMedia !== null) {
@@ -115,7 +195,6 @@ export default function SuperAdminAnalytics() {
             document.body.style.overflow = 'unset';
         }
 
-        // Cleanup on unmount
         return () => {
             document.body.style.overflow = 'unset';
         };
@@ -141,7 +220,6 @@ export default function SuperAdminAnalytics() {
         setSelectedUser(null);
     };
 
-    // Shared internal content for expanding Auth/Anon tabs (used in both Desktop & Mobile layouts)
     const renderExpandedContent = (pkg) => (
         <div className="p-4 md:p-6">
             <div className="flex gap-2 border-b border-border/40 pb-3 mb-4">
@@ -229,9 +307,9 @@ export default function SuperAdminAnalytics() {
                 <p className="text-sm md:text-base text-muted-foreground mt-2">Monitor traffic, visual engagement, and top-of-funnel leads.</p>
             </div>
 
-            {/* KPI Cards */}
+            {/* KPI Cards (Mapped to live metrics state) */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                {kpiData.map((kpi, idx) => {
+                {dynamicKpiData.map((kpi, idx) => {
                     const Icon = kpi.icon;
                     return (
                         <div
@@ -491,7 +569,8 @@ export default function SuperAdminAnalytics() {
                                 </div>
                                 <div className="overflow-y-auto flex-1 p-4">
                                     <ul className="space-y-3">
-                                        {mockInquiriesList.filter(i => activeModal === 'inquiries' || i.status === 'pending').map(inq => (
+                                        {/* ✨ CHANGED: Now mapping over the real live database inquiries */}
+                                        {inquiriesList.filter(i => activeModal === 'inquiries' || i.status === 'pending').map(inq => (
                                             <li key={inq.id} className="p-4 border border-border/60 rounded-xl hover:bg-muted/30 transition-colors">
                                                 <div className="flex justify-between items-start mb-1">
                                                     <span className="font-bold text-sm text-foreground">{inq.name}</span>
@@ -505,6 +584,10 @@ export default function SuperAdminAnalytics() {
                                                 </div>
                                             </li>
                                         ))}
+                                        {/* Fallback if empty */}
+                                        {inquiriesList.filter(i => activeModal === 'inquiries' || i.status === 'pending').length === 0 && (
+                                            <li className="text-center p-4 text-muted-foreground text-sm italic">No inquiries found.</li>
+                                        )}
                                     </ul>
                                 </div>
                             </motion.div>
