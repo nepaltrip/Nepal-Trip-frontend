@@ -24,14 +24,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { UserDetailModal } from "../../components/modal/UserDetailModal";
 
-// --- DUMMY DATA FOR VIBE INTENT & PACKAGES (Will be made live in the next step) ---
-const discoverStats = [
-    { vibe: "High Altitude Trekking", clicks: 840, galleryConversions: 320, avgTime: "4m 12s", bounceRate: "22%" },
-    { vibe: "Culture & City", clicks: 610, galleryConversions: 150, avgTime: "2m 45s", bounceRate: "35%" },
-    { vibe: "Wildlife & Jungle", clicks: 430, galleryConversions: 95, avgTime: "3m 10s", bounceRate: "28%" },
-    { vibe: "Honeymoon", clicks: 290, galleryConversions: 110, avgTime: "5m 30s", bounceRate: "15%" },
-];
-
+// STATIC DATA ---
 const packageEngagement = [
     {
         id: "pkg-1",
@@ -65,6 +58,9 @@ export default function SuperAdminAnalytics() {
     // ✨ CONSUME GLOBAL STATE FROM LAYOUT
     const { metrics, socketInstance } = useOutletContext();
 
+    // 🐛 FIX: Moved state inside the component body
+    const [discoverStats, setDiscoverStats] = useState([]);
+
     const [expandedRow, setExpandedRow] = useState(null);
     const [rowTab, setRowTab] = useState("auth");
 
@@ -89,11 +85,24 @@ export default function SuperAdminAnalytics() {
             }
         };
         fetchTopGallery();
+
+        const fetchVibeStats = async () => {
+            try {
+                // Note: You'll need to make a quick GET /discover/track endpoint 
+                // that just returns the broadcastVibeMetrics aggregate math.
+                const { data } = await api.get('/discover/track');
+                if (data.success) setDiscoverStats(data.data);
+            } catch (error) {
+                console.error("Failed to load initial vibe stats", error);
+            }
+        };
+        fetchVibeStats();
     }, []);
 
     // Listen for real-time gallery clicks and dynamically re-sort the UI!
     useEffect(() => {
         if (socketInstance) {
+            // 1. Existing Gallery Update Listener
             const handleGalleryUpdate = (payload) => {
                 setLiveTopMedia(prev => {
                     const updated = prev.map(m =>
@@ -106,8 +115,21 @@ export default function SuperAdminAnalytics() {
                 });
             };
 
+            // 2. ✨ NEW: Vibe Intent Telemetry Listener
+            const handleVibeUpdate = (payload) => {
+                // The backend sends the perfectly formatted and sorted array
+                setDiscoverStats(payload);
+            };
+
+            // Bind both events
             socketInstance.on('gallery_view_update', handleGalleryUpdate);
-            return () => socketInstance.off('gallery_view_update', handleGalleryUpdate);
+            socketInstance.on('vibe_intent_update', handleVibeUpdate);
+
+            // Cleanup both events on unmount
+            return () => {
+                socketInstance.off('gallery_view_update', handleGalleryUpdate);
+                socketInstance.off('vibe_intent_update', handleVibeUpdate);
+            };
         }
     }, [socketInstance]);
 
@@ -309,37 +331,47 @@ export default function SuperAdminAnalytics() {
                         </div>
 
                         <div className="space-y-5">
-                            {discoverStats.map((stat, idx) => {
-                                const maxClicks = Math.max(...discoverStats.map(s => s.clicks));
-                                const clickPercent = (stat.clicks / maxClicks) * 100;
-                                const conversionRate = Math.round((stat.galleryConversions / stat.clicks) * 100);
+                            {(() => {
+                                // Calculate maxClicks safely ONCE outside the loop
+                                const maxClicks = discoverStats.length > 0
+                                    ? Math.max(...discoverStats.map(s => s.clicks))
+                                    : 1;
 
-                                return (
-                                    <div
-                                        key={idx}
-                                        onClick={() => openModal('discoverDetails', stat)}
-                                        className="group cursor-pointer p-2 -mx-2 rounded-lg hover:bg-muted/50 transition-colors"
-                                    >
-                                        <div className="flex justify-between text-sm mb-2">
-                                            <span className="font-bold text-foreground group-hover:text-[#2A5244] transition-colors">{stat.vibe}</span>
-                                            <span className="text-muted-foreground font-medium text-xs">{stat.clicks} views</span>
-                                        </div>
-                                        <div className="h-2.5 w-full bg-muted rounded-full overflow-hidden flex shadow-inner">
-                                            <div
-                                                className="h-full bg-[#2A5244] rounded-full transition-all duration-1000 ease-out group-hover:bg-[#FA6D16]"
-                                                style={{ width: `${clickPercent}%` }}
-                                            />
-                                        </div>
-                                        <div className="mt-2 flex items-center justify-between text-[10px] md:text-xs font-semibold text-muted-foreground">
-                                            <div className="flex items-center gap-1.5 text-[#FA6D16]">
-                                                <MousePointerClick className="h-3.5 w-3.5" />
-                                                <span>{stat.galleryConversions} Gallery Clicks</span>
+                                return discoverStats.map((stat, idx) => {
+                                    // Prevent NaN if clicks are 0
+                                    const clickPercent = maxClicks > 0 ? (stat.clicks / maxClicks) * 100 : 0;
+
+                                    const conversionRate = stat.clicks > 0
+                                        ? Math.round((stat.galleryConversions / stat.clicks) * 100)
+                                        : 0;
+
+                                    return (
+                                        <div
+                                            key={idx}
+                                            onClick={() => openModal('discoverDetails', stat)}
+                                            className="group cursor-pointer p-2 -mx-2 rounded-lg hover:bg-muted/50 transition-colors"
+                                        >
+                                            <div className="flex justify-between text-sm mb-2">
+                                                <span className="font-bold text-foreground group-hover:text-[#2A5244] transition-colors">{stat.vibe}</span>
+                                                <span className="text-muted-foreground font-medium text-xs">{stat.clicks} views</span>
                                             </div>
-                                            <span className="bg-[#2A5244]/10 text-[#2A5244] px-2 py-0.5 rounded-full">{conversionRate}% Conversion</span>
+                                            <div className="h-2.5 w-full bg-muted rounded-full overflow-hidden flex shadow-inner">
+                                                <div
+                                                    className="h-full bg-[#2A5244] rounded-full transition-all duration-1000 ease-out group-hover:bg-[#FA6D16]"
+                                                    style={{ width: `${clickPercent}%` }}
+                                                />
+                                            </div>
+                                            <div className="mt-2 flex items-center justify-between text-[10px] md:text-xs font-semibold text-muted-foreground">
+                                                <div className="flex items-center gap-1.5 text-[#FA6D16]">
+                                                    <MousePointerClick className="h-3.5 w-3.5" />
+                                                    <span>{stat.galleryConversions} Gallery Clicks</span>
+                                                </div>
+                                                <span className="bg-[#2A5244]/10 text-[#2A5244] px-2 py-0.5 rounded-full">{conversionRate}% Conversion</span>
+                                            </div>
                                         </div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                });
+                            })()}
                         </div>
                     </div>
                 </div>
@@ -578,29 +610,72 @@ export default function SuperAdminAnalytics() {
                         {activeModal === 'discoverDetails' && modalData && (
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                                className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95%] max-w-sm bg-white rounded-3xl shadow-2xl z-50 border border-border/40 overflow-hidden"
+                                className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95%] max-w-sm bg-white rounded-3xl shadow-2xl z-50 border border-border/40 overflow-hidden flex flex-col max-h-[85vh]"
                             >
-                                <div className="p-6 border-b border-border/40 bg-[#FDFBF7] flex justify-between items-center">
+                                <div className="p-6 border-b border-border/40 bg-[#FDFBF7] flex justify-between items-center shrink-0">
                                     <h2 className="text-lg font-bold font-serif text-foreground truncate pr-4">{modalData.vibe}</h2>
                                     <button onClick={closeModal} className="p-2 -mr-2 hover:bg-muted rounded-full transition-colors"><X className="h-5 w-5" /></button>
                                 </div>
-                                <div className="p-6 space-y-4">
-                                    <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-                                        <span className="text-sm font-semibold text-muted-foreground">Total Views</span>
-                                        <span className="text-base font-black text-foreground">{modalData.clicks}</span>
+
+                                <div className="p-6 overflow-y-auto">
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                                            <span className="text-sm font-semibold text-muted-foreground">Total Views</span>
+                                            <span className="text-base font-black text-foreground">{modalData.clicks}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center p-3 bg-[#FA6D16]/5 rounded-lg border border-[#FA6D16]/10">
+                                            <span className="text-sm font-semibold text-[#FA6D16]">Gallery Conversions</span>
+                                            <span className="text-base font-black text-[#FA6D16]">{modalData.galleryConversions}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                                            <span className="text-sm font-semibold text-muted-foreground">Avg. Time on Page</span>
+                                            <span className="text-base font-black text-foreground">{modalData.avgTime}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                                            <span className="text-sm font-semibold text-muted-foreground">Bounce Rate</span>
+                                            <span className="text-base font-black text-foreground">{modalData.bounceRate}</span>
+                                        </div>
                                     </div>
-                                    <div className="flex justify-between items-center p-3 bg-[#FA6D16]/5 rounded-lg border border-[#FA6D16]/10">
-                                        <span className="text-sm font-semibold text-[#FA6D16]">Gallery Conversions</span>
-                                        <span className="text-base font-black text-[#FA6D16]">{modalData.galleryConversions}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-                                        <span className="text-sm font-semibold text-muted-foreground">Avg. Time on Page</span>
-                                        <span className="text-base font-black text-foreground">{modalData.avgTime}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-                                        <span className="text-sm font-semibold text-muted-foreground">Bounce Rate</span>
-                                        <span className="text-base font-black text-foreground">{modalData.bounceRate}</span>
-                                    </div>
+
+                                    {/* ✨ UPDATED: Top Viewers Leaderboard is now clickable! */}
+                                    {modalData.topUsers && modalData.topUsers.length > 0 && (
+                                        <div className="mt-6 border-t border-border/40 pt-5">
+                                            <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Top Registered Viewers</h3>
+                                            <div className="space-y-3">
+                                                {modalData.topUsers.map((u, i) => (
+                                                    <div
+                                                        key={i}
+                                                        // ✨ Open the User 360 modal and map the data gracefully
+                                                        onClick={() => openModal('user360', {
+                                                            id: u.id,
+                                                            name: u.name || "Unknown User",
+                                                            email: u.email || "No email provided",
+                                                            photo: u.name ? u.name.charAt(0).toUpperCase() : "U",
+                                                            role: "User",
+                                                            topVibe: modalData.vibe, // Injects the current vibe as their top interest
+                                                            lastSeen: "Active Session",
+                                                            totalVisits: "Live Tracking",
+                                                            leadScore: u.timeSpent > 30 ? "Hot" : "Warm" // Dynamic score based on time
+                                                        })}
+                                                        className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-border/60 shadow-sm cursor-pointer hover:border-[#2A5244]/50 hover:shadow-md transition-all group"
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-full bg-[#2A5244] text-white flex items-center justify-center text-xs font-bold overflow-hidden shadow-inner group-hover:scale-105 transition-transform">
+                                                                {u.photo ? <img src={u.photo} className="w-full h-full object-cover" alt={u.name} /> : (u.name?.charAt(0) || 'U')}
+                                                            </div>
+                                                            <div className="flex flex-col min-w-0">
+                                                                <span className="text-xs font-bold text-foreground leading-tight truncate group-hover:text-[#2A5244] transition-colors">{u.name || "Unknown"}</span>
+                                                                <span className="text-[10px] font-medium text-muted-foreground truncate w-24 md:w-32">{u.email || "No email"}</span>
+                                                            </div>
+                                                        </div>
+                                                        <span className="text-[10px] font-black text-[#FA6D16] bg-[#FA6D16]/10 px-2 py-1 rounded-md shrink-0">
+                                                            {u.timeSpent > 60 ? `${Math.floor(u.timeSpent / 60)}m ${u.timeSpent % 60}s` : `${u.timeSpent}s`}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </motion.div>
                         )}

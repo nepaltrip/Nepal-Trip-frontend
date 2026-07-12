@@ -157,7 +157,7 @@ const InlineTextareaEditor = ({ initialValue, onSave, placeholder = "Add short d
 };
 
 // --- Continuous 3D Cylinder Card Component ---
-const CylinderCard = ({ pkg, allPackages, index, activeIndex, dragX, navigate, isDragging, activeGodMode, deletingId, setDeletingId, confirmDelete, onUpdate, onUpdateLinked }) => {
+const CylinderCard = ({ pkg, allPackages, index, activeIndex, dragX, navigate, isDragging, activeGodMode, deletingId, setDeletingId, confirmDelete, onUpdate, onUpdateLinked, activeVibeSession }) => {
     const PAGE_WIDTH = typeof window !== 'undefined' ? (window.innerWidth < 768 ? window.innerWidth : 800) : 400;
 
     const localX = useTransform(activeIndex, (latest) => (index - latest) * PAGE_WIDTH);
@@ -193,9 +193,13 @@ const CylinderCard = ({ pkg, allPackages, index, activeIndex, dragX, navigate, i
         }
     };
 
-    const handleGalleryClick = (e) => {
+    const handleGalleryClick = (e, category) => {
         e.stopPropagation();
-        navigate(`/gallery?destination=${encodeURIComponent(pkg.destination)}`);
+        // Flag the conversion for the current session!
+        activeVibeSession.current.galleryClicked = true;
+
+        localStorage.setItem("gallerySearch", pkg.destination);
+        navigate(`/gallery`);
     };
 
     return (
@@ -639,6 +643,62 @@ export default function Discover() {
     const cardContainerRef = useRef(null);
     const wheelTimeout = useRef(null);
     const isDragging = useRef(false);
+    const activeVibeSession = useRef({ vibe: null, startTime: null, galleryClicked: false });
+
+    const filteredDestinations = destinations.filter(pkg => {
+        const query = searchQuery.toLowerCase();
+        const matchesSearch =
+            pkg.title?.toLowerCase().includes(query) ||
+            pkg.destination?.toLowerCase().includes(query) ||
+            pkg.category?.toLowerCase().includes(query);
+
+        const matchesCategory = selectedCategory === "All" || pkg.category === selectedCategory;
+        return matchesSearch && matchesCategory;
+    });
+
+    const sendTelemetry = () => {
+        const session = activeVibeSession.current;
+        if (!session.vibe || !session.startTime) return;
+
+        const durationSeconds = Math.floor((Date.now() - session.startTime) / 1000);
+        const visitorId = localStorage.getItem('nt_visitor_id');
+        const isBounce = durationSeconds < 5 && !session.galleryClicked;
+
+        // ✨ NEW: Attach the user ID if they are logged in
+        const payload = JSON.stringify({
+            vibe: session.vibe,
+            visitorId: visitorId,
+            userId: user?._id || user?.id || null, // <--- ADD THIS LINE
+            duration: durationSeconds,
+            galleryClicked: session.galleryClicked,
+            isBounce: isBounce
+        });
+
+        const blob = new Blob([payload], { type: 'application/json' });
+        navigator.sendBeacon(`${import.meta.env.VITE_API_URL}/discover/track`, blob);
+
+        activeVibeSession.current = { vibe: null, startTime: null, galleryClicked: false };
+    };
+
+    useEffect(() => {
+        if (viewMode !== 'immersive' || filteredDestinations.length === 0) return;
+
+        const currentPkg = filteredDestinations[currentIndex];
+        if (!currentPkg || !currentPkg.category) return;
+
+        // If they changed cards, send the data for the old card
+        if (activeVibeSession.current.vibe && activeVibeSession.current.vibe !== currentPkg.category) {
+            sendTelemetry();
+        }
+
+        // Start timer for the new card
+        activeVibeSession.current.vibe = currentPkg.category;
+        activeVibeSession.current.startTime = Date.now();
+        activeVibeSession.current.galleryClicked = false;
+
+        // Cleanup: Send data if they unmount/leave the page entirely
+        return () => { sendTelemetry(); };
+    }, [currentIndex, viewMode, filteredDestinations]);
 
     // Fetch Discover Destinations AND All Packages
     useEffect(() => {
@@ -718,17 +778,6 @@ export default function Discover() {
             setIsRestoring(false);
         }
     };
-
-    const filteredDestinations = destinations.filter(pkg => {
-        const query = searchQuery.toLowerCase();
-        const matchesSearch =
-            pkg.title?.toLowerCase().includes(query) ||
-            pkg.destination?.toLowerCase().includes(query) ||
-            pkg.category?.toLowerCase().includes(query);
-
-        const matchesCategory = selectedCategory === "All" || pkg.category === selectedCategory;
-        return matchesSearch && matchesCategory;
-    });
 
     useEffect(() => {
         setCurrentIndex(0);
@@ -878,8 +927,23 @@ export default function Discover() {
                                 <div ref={cardContainerRef} onWheel={handleWheel} style={{ perspective: "1000px" }} className="relative w-full h-[calc(100dvh-16rem)] my-4 md:my-0 min-h-100 max-h-200 md:h-[65vh] md:min-h-125 md:max-h-187.5 overflow-hidden flex items-center justify-center overscroll-x-none">
                                     <motion.div drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={1} style={{ x: dragX, transformStyle: "preserve-3d" }} onDragStart={() => { isDragging.current = true; setHasSwiped(true); }} onDragEnd={handleDragEnd} className="absolute inset-0 z-10 cursor-grab active:cursor-grabbing flex items-center justify-center">
                                         {filteredDestinations.map((pkg, i) => (
-                                            <CylinderCard key={pkg._id} pkg={pkg} allPackages={allPackages} index={i} activeIndex={activeIndex} dragX={dragX} navigate={navigate} isDragging={isDragging} activeGodMode={activeGodMode} deletingId={deletingId} setDeletingId={setDeletingId} confirmDelete={confirmDeletePackage} onUpdate={handleUpdatePackage} onUpdateLinked={handleUpdateLinkedPackage} />
-                                        ))}
+                                            <CylinderCard
+                                                key={pkg._id}
+                                                pkg={pkg}
+                                                allPackages={allPackages}
+                                                index={i}
+                                                activeIndex={activeIndex}
+                                                dragX={dragX}
+                                                navigate={navigate}
+                                                isDragging={isDragging}
+                                                activeGodMode={activeGodMode}
+                                                deletingId={deletingId}
+                                                setDeletingId={setDeletingId}
+                                                confirmDelete={confirmDeletePackage}
+                                                onUpdate={handleUpdatePackage}
+                                                onUpdateLinked={handleUpdateLinkedPackage}
+                                                activeVibeSession={activeVibeSession}
+                                            />))}
                                     </motion.div>
 
                                     {currentIndex > 0 && (
