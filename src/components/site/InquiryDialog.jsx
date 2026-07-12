@@ -46,7 +46,7 @@ export function InquiryDialog({ packageId, packageTitle, source = "General", tri
         const { name, email, phone, travel_date, travelers, message } = parsed.data;
 
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/inquiries`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/inquiries`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
