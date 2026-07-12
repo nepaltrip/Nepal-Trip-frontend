@@ -495,11 +495,15 @@ export default function Gallery() {
             trackedHistory[item._id] = now;
             localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(trackedHistory));
 
-            const { data } = await api.post(`/gallery/${item._id}/view`);
+            const { data } = await api.post(`/gallery/${item._id}/view`, {
+                visitorId: localStorage.getItem('nt_visitor_id')
+            });
+
             if (data.success) {
-                setMediaItems(prev => prev.map(m => m._id === item._id ? { ...m, views: data.views } : m));
+                // ✨ Map the new allTimeViews metric to the standard 'views' key locally
+                setMediaItems(prev => prev.map(m => m._id === item._id ? { ...m, views: data.allTimeViews } : m));
                 if (selectedMedia && selectedMedia._id === item._id) {
-                    setSelectedMedia(prev => ({ ...prev, views: data.views }));
+                    setSelectedMedia(prev => ({ ...prev, views: data.allTimeViews }));
                 }
             }
         } catch (error) { console.error("View count tracker failed", error); }

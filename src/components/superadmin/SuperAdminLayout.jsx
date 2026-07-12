@@ -2,19 +2,75 @@ import React, { useState, useEffect } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { LayoutDashboard, MessageSquare, LogOut, Menu, X, Settings, Shield, Compass, Users } from "lucide-react";
+import { useSelector } from "react-redux";
+import { io } from "socket.io-client";
+import api from "../../api/axios";
 
 export function SuperAdminLayout() {
+    const { user, isAuthenticated } = useSelector((state) => state.auth);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isProfileLoading, setIsProfileLoading] = useState(true);
     const location = useLocation();
     const pathname = location.pathname;
+
+    // ✨ GLOBAL REAL-TIME STATE
+    const [socketInstance, setSocketInstance] = useState(null);
+    const [metrics, setMetrics] = useState({
+        uniqueVisitors: 0,
+        totalInquiries: 0,
+        pendingReplies: 0,
+        recentInquiries: []
+    });
 
     useEffect(() => {
         const timer = setTimeout(() => setIsProfileLoading(false), 1500);
         return () => clearTimeout(timer);
     }, []);
 
-    // NOTE: Paths updated to /superadmin
+    // ✨ THE MASTER SOCKET CONNECTION
+    useEffect(() => {
+        const fetchBaseline = async () => {
+            try {
+                const { data } = await api.get('/superadmin/dashboard-counters');
+                setMetrics({
+                    uniqueVisitors: data.uniqueVisitors || 0,
+                    totalInquiries: data.totalInquiries || 0,
+                    pendingReplies: data.pendingReplies || 0,
+                    recentInquiries: data.recentInquiries || []
+                });
+            } catch (error) {
+                console.error("Layout failed to fetch baseline metrics", error);
+            }
+        };
+
+        fetchBaseline();
+
+        let socket;
+        if (isAuthenticated && user) {
+            const baseUrl = import.meta.env.VITE_API_URL.replace('/api', '');
+            socket = io(baseUrl, { withCredentials: true });
+
+            socket.on('connect', () => {
+                console.log("🟢 Global Admin Socket Connected");
+                socket.emit('register', { id: user.id || user._id, role: user.role });
+            });
+
+            socket.on('dashboard_counter_update', (payload) => {
+                if (payload.action === 'live_visitor_update') {
+                    setMetrics(prev => ({ ...prev, uniqueVisitors: payload.count }));
+                } else {
+                    fetchBaseline(); // Refetch for complex inquiry updates
+                }
+            });
+
+            setSocketInstance(socket);
+        }
+
+        return () => {
+            if (socket) socket.disconnect();
+        };
+    }, [isAuthenticated, user]);
+
     const superAdminLinks = [
         { label: "Dashboard", to: "/superadmin", icon: LayoutDashboard },
         { label: "Inquiries", to: "/superadmin/inquiries", icon: MessageSquare },
@@ -54,10 +110,10 @@ export function SuperAdminLayout() {
                     ) : (
                         <div className="flex items-center gap-3">
                             <div className="h-10 w-10 shrink-0 rounded-full bg-linear-to-br from-purple-700 to-purple-900 flex items-center justify-center text-white font-serif font-bold shadow-md border-2 border-white">
-                                S
+                                {user?.name ? user.name.charAt(0).toUpperCase() : 'S'}
                             </div>
                             <div className="flex flex-col min-w-0">
-                                <span className="text-sm font-bold text-foreground leading-tight truncate">System Owner</span>
+                                <span className="text-sm font-bold text-foreground leading-tight truncate">{user?.name || "System Owner"}</span>
                                 <span className="text-[11px] font-bold text-purple-600 truncate uppercase tracking-wider">Level 10 Access</span>
                             </div>
                         </div>
@@ -73,13 +129,21 @@ export function SuperAdminLayout() {
                                 key={link.to}
                                 to={link.to}
                                 onClick={() => setIsMobileMenuOpen(false)}
-                                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold transition-all ${isActive
+                                className={`flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-bold transition-all ${isActive
                                     ? "bg-purple-600 text-white shadow-md"
                                     : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                                     }`}
                             >
-                                <Icon className="h-5 w-5 shrink-0" />
-                                {link.label}
+                                <div className="flex items-center gap-3">
+                                    <Icon className="h-5 w-5 shrink-0" />
+                                    {link.label}
+                                </div>
+                                {/* ✨ LIVE PENDING BADGE */}
+                                {link.label === "Inquiries" && metrics.pendingReplies > 0 && (
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black transition-colors ${isActive ? 'bg-white text-purple-600' : 'bg-red-500 text-white'}`}>
+                                        {metrics.pendingReplies}
+                                    </span>
+                                )}
                             </Link>
                         );
                     })}
@@ -115,7 +179,7 @@ export function SuperAdminLayout() {
             </div>
 
             <div className="flex flex-1 flex-col overflow-hidden relative">
-                <header className="flex h-16 shrink-0 items-center border-b border-border/40 bg-white px-4 md:hidden shadow-sm z-10">
+                <header className="flex h-16 shrink-0 items-center justify-between border-b border-border/40 bg-white px-4 md:hidden shadow-sm z-10">
                     <div className="flex items-center gap-3">
                         <button onClick={() => setIsMobileMenuOpen(true)} className="rounded-md p-2 -ml-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors active:scale-95">
                             <Menu className="h-6 w-6" />
@@ -137,7 +201,8 @@ export function SuperAdminLayout() {
                             transition={{ duration: 0.3, ease: "easeInOut" }}
                             className="p-4 md:p-8 min-h-full"
                         >
-                            <Outlet />
+                            {/* ✨ PASSING THE LIVE DATA TO CHILDREN */}
+                            <Outlet context={{ metrics, socketInstance }} />
                         </motion.div>
                     </AnimatePresence>
                 </main>

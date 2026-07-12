@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useSelector } from "react-redux";
-import { io } from "socket.io-client";
+import { useOutletContext } from "react-router-dom"; // ✨ Consumes global state from Layout
 import api from "../../api/axios";
 import {
     Users,
@@ -20,38 +19,18 @@ import {
     Activity,
     Compass,
     Ban,
-    Mail,
     ArrowRight
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { UserDetailModal } from "../../components/modal/UserDetailModal";
 
-
+// --- DUMMY DATA FOR VIBE INTENT & PACKAGES (Will be made live in the next step) ---
 const discoverStats = [
     { vibe: "High Altitude Trekking", clicks: 840, galleryConversions: 320, avgTime: "4m 12s", bounceRate: "22%" },
     { vibe: "Culture & City", clicks: 610, galleryConversions: 150, avgTime: "2m 45s", bounceRate: "35%" },
     { vibe: "Wildlife & Jungle", clicks: 430, galleryConversions: 95, avgTime: "3m 10s", bounceRate: "28%" },
     { vibe: "Honeymoon", clicks: 290, galleryConversions: 110, avgTime: "5m 30s", bounceRate: "15%" },
 ];
-
-const galleryStats = [
-    { id: 1, title: "Rhino at Chitwan", vibe: "Wildlife & Jungle", clicks: 1205, url: "https://images.unsplash.com/photo-1585675100414-22d71f11cb23?q=80&w=400&auto=format&fit=crop" },
-    { id: 2, title: "Everest Base Camp", vibe: "High Altitude", clicks: 940, url: "https://images.unsplash.com/photo-1544735716-392fe2489ffa?q=80&w=400&auto=format&fit=crop" },
-    { id: 3, title: "Patan Durbar Square", vibe: "Culture & City", clicks: 820, url: "https://images.unsplash.com/photo-1588714477688-cf28a50e94f7?q=80&w=400&auto=format&fit=crop" }
-];
-
-const top50Media = Array.from({ length: 50 }).map((_, i) => ({
-    id: `m-${i + 1}`,
-    title: `Premium Media Asset ${i + 1}`,
-    vibe: ["Wildlife", "Culture", "Mountains", "Honeymoon"][i % 4],
-    clicks: 1500 - (i * 22),
-    url: [
-        "https://images.unsplash.com/photo-1585675100414-22d71f11cb23?q=80&w=800&auto=format&fit=crop",
-        "https://images.unsplash.com/photo-1544735716-392fe2489ffa?q=80&w=800&auto=format&fit=crop",
-        "https://images.unsplash.com/photo-1588714477688-cf28a50e94f7?q=80&w=800&auto=format&fit=crop",
-        "https://images.unsplash.com/photo-1605640840605-14ac1855827b?q=80&w=800&auto=format&fit=crop"
-    ][i % 4]
-}));
 
 const packageEngagement = [
     {
@@ -83,92 +62,62 @@ const packageEngagement = [
 ];
 
 export default function SuperAdminAnalytics() {
-    const { user, isAuthenticated } = useSelector((state) => state.auth);
+    // ✨ CONSUME GLOBAL STATE FROM LAYOUT
+    const { metrics, socketInstance } = useOutletContext();
 
-
-    // ✨ REAL-TIME METRICS STATE
-    const [metrics, setMetrics] = useState({
-        uniqueVisitors: 2405, // Placeholder for 30d visitors
-        totalInquiries: 0,
-        pendingReplies: 0
-    });
-
-    const [inquiriesList, setInquiriesList] = useState([]);
     const [expandedRow, setExpandedRow] = useState(null);
     const [rowTab, setRowTab] = useState("auth");
 
     // Modal States
-    const [selectedUser, setSelectedUser] = useState(null);
-    const [activeModal, setActiveModal] = useState(null); // 'inquiries', 'pending', 'media', 'discoverDetails'
+    const [activeModal, setActiveModal] = useState(null); // 'inquiries', 'pending', 'media', 'discoverDetails', 'user360'
     const [modalData, setModalData] = useState(null);
-
-    // Full Screen Media State
     const [selectedMedia, setSelectedMedia] = useState(null);
 
+    // ✨ REAL-TIME LIVE GALLERY STATE
+    const [liveTopMedia, setLiveTopMedia] = useState([]);
 
-
-    // ✨ FETCH BASELINE & WIRE UP SOCKETS
-    const fetchBaselineMetrics = async () => {
-        try {
-            const { data } = await api.get('/superadmin/dashboard-counters');
-            setMetrics({
-                uniqueVisitors: data.uniqueVisitors || 0,
-                totalInquiries: data.totalInquiries || 0,
-                pendingReplies: data.pendingReplies || 0
-            });
-            if (data.recentInquiries) {
-                setInquiriesList(data.recentInquiries); // Populate the modal list
-            }
-        } catch (error) {
-            console.error("Failed to load dashboard metrics", error);
-        }
-    };
-
+    // Fetch the real top 50 media assets from your database on mount
     useEffect(() => {
-        fetchBaselineMetrics();
-
-        let socket;
-        if (isAuthenticated && user) {
-            // 1. Strip '/api' from the URL so it connects to the root backend server
-            const baseUrl = import.meta.env.VITE_API_URL.replace('/api', '');
-
-            // 2. Add withCredentials to match your backend CORS rules
-            socket = io(baseUrl, {
-                withCredentials: true
-            });
-
-            // 3. Emit inside the 'connect' event listener to guarantee you join the room
-            socket.on('connect', () => {
-                console.log("🟢 Socket connected! Joining Admin Room...");
-                socket.emit('register', { id: user.id || user._id, role: user.role });
-            });
-
-            // 4. Listen for the broadcast
-            socket.on('dashboard_counter_update', (payload) => {
-                console.log("🔥 Live update received:", payload);
-                if (payload.action === 'live_visitor_update') {
-                    setMetrics(prev => ({
-                        ...prev,
-                        uniqueVisitors: payload.count // Smoothly rewrite visitor metrics count live
-                    }));
-                } else {
-                    fetchBaselineMetrics();
+        const fetchTopGallery = async () => {
+            try {
+                const { data } = await api.get('/gallery/trending');
+                if (data.success) {
+                    setLiveTopMedia(data.data);
                 }
-            });
-        }
-
-        return () => {
-            if (socket) socket.disconnect();
+            } catch (error) {
+                console.error("Failed to load top gallery items", error);
+            }
         };
-    }, [isAuthenticated, user]);
-    
-    // ✨ DYNAMIC KPI DATA LINKED TO LIVE METRICS
+        fetchTopGallery();
+    }, []);
+
+    // Listen for real-time gallery clicks and dynamically re-sort the UI!
+    useEffect(() => {
+        if (socketInstance) {
+            const handleGalleryUpdate = (payload) => {
+                setLiveTopMedia(prev => {
+                    const updated = prev.map(m =>
+                        m._id === payload.mediaId
+                            ? { ...m, allTimeViews: payload.allTimeViews, trendingViews: payload.trendingViews }
+                            : m
+                    );
+                    // ✨ Re-sort explicitly by TRENDING views (last 7 days)
+                    return updated.sort((a, b) => b.trendingViews - a.trendingViews);
+                });
+            };
+
+            socketInstance.on('gallery_view_update', handleGalleryUpdate);
+            return () => socketInstance.off('gallery_view_update', handleGalleryUpdate);
+        }
+    }, [socketInstance]);
+
+    // ✨ DYNAMIC KPI DATA LINKED TO LAYOUT CONTEXT
     const dynamicKpiData = [
         {
             id: "visitors",
             title: "Unique Visitors (30d)",
-            value: metrics.uniqueVisitors.toLocaleString(),
-            trend: "Live Stream", // Indicates metrics are pulling cleanly from sockets
+            value: (metrics?.uniqueVisitors || 0).toLocaleString(),
+            trend: "Live Stream",
             icon: Users,
             color: "text-[#2A5244]",
             bg: "bg-[#2A5244]/10",
@@ -177,8 +126,7 @@ export default function SuperAdminAnalytics() {
         {
             id: "inquiries",
             title: "Total Inquiries",
-            value: metrics.totalInquiries.toLocaleString(),
-            // Replaced dummy percentage because Total Inquiries is an 'All Time' metric
+            value: (metrics?.totalInquiries || 0).toLocaleString(),
             trend: "All Time",
             icon: MessageSquare,
             color: "text-[#2A5244]",
@@ -188,13 +136,11 @@ export default function SuperAdminAnalytics() {
         {
             id: "pending",
             title: "Pending Replies",
-            value: metrics.pendingReplies.toLocaleString(),
-            // ✨ LOGICAL CHECK: Only say "Action Required" if there are actual pending replies
-            trend: metrics.pendingReplies > 0 ? "Action Required" : "All Caught Up",
+            value: (metrics?.pendingReplies || 0).toLocaleString(),
+            trend: (metrics?.pendingReplies || 0) > 0 ? "Action Required" : "All Caught Up",
             icon: Clock,
-            // ✨ LOGICAL CHECK: Turn the icon green if everything is replied to
-            color: metrics.pendingReplies > 0 ? "text-[#FA6D16]" : "text-emerald-600",
-            bg: metrics.pendingReplies > 0 ? "bg-[#FA6D16]/10" : "bg-emerald-100",
+            color: (metrics?.pendingReplies || 0) > 0 ? "text-[#FA6D16]" : "text-emerald-600",
+            bg: (metrics?.pendingReplies || 0) > 0 ? "bg-[#FA6D16]/10" : "bg-emerald-100",
             clickable: true
         },
     ];
@@ -206,7 +152,6 @@ export default function SuperAdminAnalytics() {
         } else {
             document.body.style.overflow = 'unset';
         }
-
         return () => {
             document.body.style.overflow = 'unset';
         };
@@ -229,8 +174,10 @@ export default function SuperAdminAnalytics() {
     const closeModal = () => {
         setActiveModal(null);
         setModalData(null);
-        setSelectedUser(null);
     };
+
+    // Grab just the top 3 for the preview cards on the main dashboard
+    const top3Media = liveTopMedia.slice(0, 3);
 
     const renderExpandedContent = (pkg) => (
         <div className="p-4 md:p-6">
@@ -319,7 +266,7 @@ export default function SuperAdminAnalytics() {
                 <p className="text-sm md:text-base text-muted-foreground mt-2">Monitor traffic, visual engagement, and top-of-funnel leads.</p>
             </div>
 
-            {/* KPI Cards (Mapped to live metrics state) */}
+            {/* KPI Cards (Mapped to layout context state) */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 {dynamicKpiData.map((kpi, idx) => {
                     const Icon = kpi.icon;
@@ -397,7 +344,7 @@ export default function SuperAdminAnalytics() {
                     </div>
                 </div>
 
-                {/* Top Performing Media (Middle/Right Col) */}
+                {/* ✨ LIVE TOP PERFORMING MEDIA PREVIEW CARDS (Middle/Right Col) */}
                 <div className="lg:col-span-2">
                     <div className="bg-white border border-border/40 rounded-2xl shadow-sm p-6 h-full flex flex-col">
                         <div className="flex items-center justify-between mb-4 border-b border-border/40 pb-4">
@@ -406,24 +353,44 @@ export default function SuperAdminAnalytics() {
                         </div>
                         <p className="text-sm text-muted-foreground mb-6">Visuals that are driving the most engagement and clicks on your site right now.</p>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                            {galleryStats.map((img) => (
-                                <div
-                                    key={img.id}
-                                    onClick={() => setSelectedMedia(img)}
-                                    className="group relative rounded-xl overflow-hidden border border-border/40 shadow-sm aspect-square sm:aspect-auto sm:h-48 cursor-pointer"
-                                >
-                                    <img src={img.url} alt={img.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                                    <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end p-4">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-[#FA6D16] mb-1">{img.vibe}</span>
-                                        <h3 className="text-white font-bold text-sm leading-tight mb-2 line-clamp-1">{img.title}</h3>
-                                        <div className="flex items-center gap-2 text-white/90 text-xs font-medium">
-                                            <Eye className="h-3.5 w-3.5 text-emerald-400" /> {img.clicks} Views
+                        {top3Media.length === 0 ? (
+                            <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-border/60 rounded-xl p-8 bg-muted/20">
+                                <ImageIcon className="h-10 w-10 text-muted-foreground mb-3 opacity-50" />
+                                <p className="text-muted-foreground font-medium">No media tracked yet.</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                                {top3Media.map((img) => (
+                                    <div
+                                        key={img._id}
+                                        onClick={() => setSelectedMedia(img)}
+                                        className="group relative rounded-xl overflow-hidden shadow-sm aspect-video cursor-pointer bg-black"
+                                    >
+                                        <img
+                                            src={img.fileType === 'video' ? (img.thumbnailUrl || '/video-placeholder.png') : img.mediaUrl}
+                                            alt={img.title}
+                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-80 group-hover:opacity-100"
+                                        />
+
+                                        {/* Location Badge (Bottom Left) */}
+                                        <div className="absolute bottom-3 left-3 flex items-center bg-black/60 backdrop-blur-md rounded-full px-2.5 py-1 border border-white/10 shadow-lg">
+                                            <MapPin size={12} className="text-[#FA6D16] mr-1.5" />
+                                            <span className="text-white text-[10px] font-bold uppercase tracking-widest">{img.locationTag}</span>
+                                        </div>
+
+                                        {/* Views Badge (Top Right) */}
+                                        <div className="absolute top-3 right-3 flex items-center gap-2 bg-black/60 backdrop-blur-md rounded-full px-2.5 py-1 border border-white/10 shadow-lg">
+                                            <span className="flex items-center gap-1 text-[#FA6D16] text-[10px] font-bold">
+                                                <TrendingUp size={12} /> {img.trendingViews}
+                                            </span>
+                                            <span className="flex items-center gap-1 text-emerald-400 text-[10px] font-bold border-l border-white/20 pl-2">
+                                                <Eye size={12} /> {img.allTimeViews}
+                                            </span>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        )}
 
                         <div className="mt-auto text-center border-t border-border/40 pt-4">
                             <button
@@ -521,14 +488,18 @@ export default function SuperAdminAnalytics() {
                                 </div>
 
                                 <div className="flex items-center justify-between mt-1">
-                                    <div className="flex items-center gap-1.5 text-sm">
-                                        <Eye className="h-4 w-4 text-muted-foreground" />
-                                        <span className="font-black text-[#2A5244]">{pkg.totalClicks}</span> Views
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] md:text-xs font-semibold text-[#2A5244] bg-[#2A5244]/10 px-2 py-0.5 rounded-md">
+                                            {pkg.authUsers.length} Auth
+                                        </span>
+                                        <span className="text-[10px] md:text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
+                                            {pkg.anonTotal} Anon
+                                        </span>
                                     </div>
-                                    <div className="flex items-center gap-1.5 text-[10px] font-bold">
-                                        <span className="bg-[#2A5244]/10 text-[#2A5244] px-2 py-0.5 rounded-md">{pkg.authUsers.length} Auth</span>
-                                        <span className="text-muted-foreground">+</span>
-                                        <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">{pkg.anonTotal} Anon</span>
+                                    <div className="flex items-center shrink-0">
+                                        <span className="text-xs font-black text-[#2A5244] flex items-center gap-1">
+                                            <MousePointerClick className="h-3.5 w-3.5" /> {pkg.totalClicks}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -581,23 +552,21 @@ export default function SuperAdminAnalytics() {
                                 </div>
                                 <div className="overflow-y-auto flex-1 p-4">
                                     <ul className="space-y-3">
-                                        {/* ✨ CHANGED: Now mapping over the real live database inquiries */}
-                                        {inquiriesList.filter(i => activeModal === 'inquiries' || i.status === 'pending').map(inq => (
-                                            <li key={inq.id} className="p-4 border border-border/60 rounded-xl hover:bg-muted/30 transition-colors">
+                                        {(metrics?.recentInquiries || []).filter(i => activeModal === 'inquiries' || i.status === 'pending').map(inq => (
+                                            <li key={inq.id || inq._id} className="p-4 border border-border/60 rounded-xl hover:bg-muted/30 transition-colors">
                                                 <div className="flex justify-between items-start mb-1">
-                                                    <span className="font-bold text-sm text-foreground">{inq.name}</span>
-                                                    <span className="text-[10px] font-medium text-muted-foreground">{inq.date}</span>
+                                                    <span className="font-bold text-sm text-foreground">{inq.name || "Unknown"}</span>
+                                                    <span className="text-[10px] font-medium text-muted-foreground">{inq.date || "Recent"}</span>
                                                 </div>
-                                                <p className="text-xs text-muted-foreground truncate">{inq.subject}</p>
+                                                <p className="text-xs text-muted-foreground truncate">{inq.subject || "No subject"}</p>
                                                 <div className="mt-2">
                                                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${inq.status === 'pending' ? 'bg-[#FA6D16]/10 text-[#FA6D16]' : 'bg-emerald-100 text-emerald-700'}`}>
-                                                        {inq.status.toUpperCase()}
+                                                        {inq.status?.toUpperCase() || 'UNKNOWN'}
                                                     </span>
                                                 </div>
                                             </li>
                                         ))}
-                                        {/* Fallback if empty */}
-                                        {inquiriesList.filter(i => activeModal === 'inquiries' || i.status === 'pending').length === 0 && (
+                                        {(metrics?.recentInquiries || []).filter(i => activeModal === 'inquiries' || i.status === 'pending').length === 0 && (
                                             <li className="text-center p-4 text-muted-foreground text-sm italic">No inquiries found.</li>
                                         )}
                                     </ul>
@@ -636,7 +605,7 @@ export default function SuperAdminAnalytics() {
                             </motion.div>
                         )}
 
-                        {/* TOP 50 MEDIA MODAL */}
+                        {/* ✨ LIVE TOP 50 GRID MODAL */}
                         {activeModal === 'media' && (
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -647,28 +616,39 @@ export default function SuperAdminAnalytics() {
                                         <h2 className="text-xl font-bold font-serif flex items-center gap-2 text-foreground">
                                             <ImageIcon className="h-5 w-5 text-[#2A5244]" /> Top 50 Media Assets
                                         </h2>
-                                        <p className="text-xs text-muted-foreground mt-1 font-medium">Performance over the last 7 days</p>
+                                        <p className="text-xs text-muted-foreground mt-1 font-medium">Live real-time engagement data</p>
                                     </div>
                                     <button onClick={closeModal} className="p-2 hover:bg-muted rounded-full transition-colors"><X className="h-5 w-5" /></button>
                                 </div>
                                 <div className="overflow-y-auto p-4 md:p-6 bg-muted/10">
-                                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
-                                        {top50Media.map(media => (
+                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                        {liveTopMedia.map((media, index) => (
                                             <div
-                                                key={media.id}
+                                                key={media._id}
                                                 onClick={() => setSelectedMedia(media)}
-                                                className="relative rounded-xl overflow-hidden shadow-sm aspect-square border border-border/40 group bg-black cursor-pointer"
+                                                className="group relative rounded-xl overflow-hidden shadow-sm aspect-square border border-border/40 bg-black cursor-pointer hover:shadow-xl transition-all"
                                             >
-                                                <img src={media.url} alt={media.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" loading="lazy" />
-                                                <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/90 to-transparent p-3 pt-6">
-                                                    <p className="text-white text-xs font-bold truncate">{media.title}</p>
-                                                    <div className="flex items-center justify-between mt-1">
-                                                        <span className="text-[8px] md:text-[10px] font-black uppercase text-[#FA6D16]">{media.vibe}</span>
-                                                        <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1"><Eye className="h-3 w-3" /> {media.clicks}</span>
-                                                    </div>
+                                                <img
+                                                    src={media.fileType === 'video' ? (media.thumbnailUrl || '/video-placeholder.png') : media.mediaUrl}
+                                                    alt={media.title}
+                                                    className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity duration-300"
+                                                    loading="lazy"
+                                                />
+
+                                                {/* Rank Badge */}
+                                                <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-md border border-white/10 shadow-md">
+                                                    #{index + 1}
                                                 </div>
-                                                <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
-                                                    #{media.id.replace('m-', '')}
+
+                                                {/* 7-Day Trending Views (Top Right) */}
+                                                <div className="absolute top-2 right-2 flex items-center gap-1 bg-[#FA6D16]/90 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded-md shadow-md">
+                                                    <TrendingUp size={12} /> {media.trendingViews}
+                                                </div>
+
+                                                {/* Location (Bottom Left) */}
+                                                <div className="absolute bottom-2 left-2 right-2 flex items-center bg-black/60 backdrop-blur-md rounded-lg px-2.5 py-1.5 border border-white/10 shadow-lg">
+                                                    <MapPin size={12} className="text-[#FA6D16] shrink-0 mr-1.5" />
+                                                    <span className="text-white text-[10px] font-bold uppercase tracking-widest truncate">{media.locationTag}</span>
                                                 </div>
                                             </div>
                                         ))}
@@ -690,45 +670,62 @@ export default function SuperAdminAnalytics() {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={() => setSelectedMedia(null)}
-                        className="fixed inset-0 bg-black/90 backdrop-blur-md z-100 flex flex-col items-center justify-center p-4 md:p-8"
+                        className="fixed inset-0 z-100 bg-black/95 backdrop-blur-xl flex items-center justify-center p-4"
                     >
-                        {/* Close Button */}
+                        {/* Cinematic Location Overlay (Bottom Left) */}
+                        <div
+                            className="absolute bottom-10 left-4 md:left-10 max-w-4xl z-110 pointer-events-auto flex flex-col gap-3"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="flex items-center gap-2 md:gap-4 drop-shadow-2xl">
+                                <MapPin size={32} className="text-[#FA6D16] drop-shadow-lg shrink-0 md:w-10 md:h-10" />
+                                <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-none">
+                                    {selectedMedia.locationTag}
+                                </h2>
+                            </div>
+                            <div className="flex items-center gap-4 mt-2 ml-1">
+                                <span className="flex items-center gap-1.5 text-[#FA6D16] font-bold bg-black/40 px-3 py-1.5 rounded-full border border-white/10 backdrop-blur-sm">
+                                    <TrendingUp size={16} /> {selectedMedia.trendingViews} Trending
+                                </span>
+                                <span className="flex items-center gap-1.5 text-emerald-400 font-bold bg-black/40 px-3 py-1.5 rounded-full border border-white/10 backdrop-blur-sm">
+                                    <Eye size={16} /> {selectedMedia.allTimeViews} Total
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Close Button (Top Right) */}
                         <button
                             onClick={() => setSelectedMedia(null)}
-                            className="absolute top-4 right-4 md:top-8 md:right-8 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-sm transition-all z-110"
+                            className="absolute top-8 right-4 md:right-8 z-110 text-white hover:text-white/70 transition-colors p-3 bg-black/40 hover:bg-black/60 rounded-full border border-white/10 backdrop-blur-md shadow-2xl"
                         >
-                            <X className="h-6 w-6" />
+                            <X size={24} />
                         </button>
 
-                        {/* Image Container with Spring Animation */}
+                        {/* Media Container */}
                         <motion.div
-                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                            animate={{ scale: 1, opacity: 1, y: 0 }}
-                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
                             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                            className="relative max-w-5xl w-full h-full max-h-[80vh] md:max-h-[85vh] flex flex-col items-center justify-center"
+                            className="relative w-full h-full flex items-center justify-center"
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <img
-                                src={selectedMedia.url}
-                                alt={selectedMedia.title}
-                                className="w-auto h-auto max-w-full max-h-full object-contain rounded-xl shadow-2xl ring-1 ring-white/20"
-                            />
-
-                            {/* Metadata Caption */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.2 }}
-                                className="absolute bottom-0 translate-y-full pt-4 text-center w-full"
-                            >
-                                <h3 className="text-white font-bold text-lg md:text-xl">{selectedMedia.title}</h3>
-                                <div className="flex items-center justify-center gap-3 mt-2 text-sm text-white/70">
-                                    <span className="font-bold text-[#FA6D16] uppercase tracking-wider">{selectedMedia.vibe}</span>
-                                    <span>•</span>
-                                    <span className="flex items-center gap-1.5"><Eye className="h-4 w-4" /> {selectedMedia.clicks} Views</span>
-                                </div>
-                            </motion.div>
+                            {selectedMedia.fileType === 'video' ? (
+                                <video
+                                    src={selectedMedia.mediaUrl}
+                                    className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+                                    controls
+                                    autoPlay
+                                    loop
+                                    playsInline
+                                />
+                            ) : (
+                                <img
+                                    src={selectedMedia.mediaUrl}
+                                    alt={selectedMedia.title}
+                                    className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl select-none"
+                                />
+                            )}
                         </motion.div>
                     </motion.div>
                 )}
