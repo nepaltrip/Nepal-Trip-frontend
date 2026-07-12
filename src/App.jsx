@@ -168,6 +168,19 @@ function App() {
     verifyUserSession();
   }, [dispatch]);
 
+  useEffect(() => {
+    // Fire the traffic metric exactly ONCE per hard app load
+    const logTrafficHit = async () => {
+      try {
+        await api.post('/analytics/hit');
+      } catch (err) {
+        console.error("Traffic log failed", err);
+      }
+    };
+
+    logTrafficHit();
+  }, []);
+
   // ✨ Web Push Subscription Logic
   useEffect(() => {
     const subscribeToWebPush = async () => {

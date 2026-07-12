@@ -123,23 +123,35 @@ export default function SuperAdminAnalytics() {
             console.error("Failed to load dashboard metrics", error);
         }
     };
+
     useEffect(() => {
         fetchBaselineMetrics();
 
         let socket;
         if (isAuthenticated && user) {
-            socket = io(import.meta.env.VITE_API_URL);
-            socket.emit('register', { id: user.id || user._id, role: user.role });
+            // 1. Strip '/api' from the URL so it connects to the root backend server
+            const baseUrl = import.meta.env.VITE_API_URL.replace('/api', '');
 
-            // ✨ When an inquiry comes in or is replied to, instantly refetch to update numbers AND the lists
+            // 2. Add withCredentials to match your backend CORS rules
+            socket = io(baseUrl, {
+                withCredentials: true
+            });
+
+            // 3. Emit inside the 'connect' event listener to guarantee you join the room
+            socket.on('connect', () => {
+                console.log("🟢 Socket connected! Joining Admin Room...");
+                socket.emit('register', { id: user.id || user._id, role: user.role });
+            });
+
+            // 4. Listen for the broadcast
             socket.on('dashboard_counter_update', (payload) => {
+                console.log("🔥 Live update received:", payload);
                 if (payload.action === 'live_visitor_update') {
                     setMetrics(prev => ({
                         ...prev,
                         uniqueVisitors: payload.count // Smoothly rewrite visitor metrics count live
                     }));
                 } else {
-                    // For everything else (inquiries, replies), fall back to the safe core master refetch
                     fetchBaselineMetrics();
                 }
             });
@@ -149,7 +161,7 @@ export default function SuperAdminAnalytics() {
             if (socket) socket.disconnect();
         };
     }, [isAuthenticated, user]);
-
+    
     // ✨ DYNAMIC KPI DATA LINKED TO LIVE METRICS
     const dynamicKpiData = [
         {
