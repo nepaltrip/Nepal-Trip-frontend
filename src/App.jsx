@@ -172,7 +172,17 @@ function App() {
     // Fire the traffic metric exactly ONCE per hard app load
     const logTrafficHit = async () => {
       try {
-        await api.post('/analytics/hit');
+        // ✨ 1. Check if this browser already has a permanent ID
+        let visitorId = localStorage.getItem('nt_visitor_id');
+
+        // ✨ 2. If not, generate one and save it forever
+        if (!visitorId) {
+          visitorId = window.crypto?.randomUUID ? window.crypto.randomUUID() : `v_${Date.now()}_${Math.random()}`;
+          localStorage.setItem('nt_visitor_id', visitorId);
+        }
+
+        // ✨ 3. Send that exact ID to the backend
+        await api.post('/analytics/hit', { visitorId });
       } catch (err) {
         console.error("Traffic log failed", err);
       }
