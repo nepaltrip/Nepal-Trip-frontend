@@ -1,11 +1,18 @@
-// public/sw.js
+import { precacheAndRoute } from 'workbox-precaching';
+
+// Precache all the build assets Workbox lists at build time
+precacheAndRoute(self.__WB_MANIFEST);
+
+// ==========================================
+// Web Push: show notification when a push arrives
+// ==========================================
 self.addEventListener('push', function (event) {
     if (event.data) {
         const data = event.data.json();
 
         const options = {
             body: data.message,
-            icon: '/logo.png', // Ensure you have a logo.png in your public folder
+            icon: '/logo.png',
             badge: '/logo.png',
             vibrate: [100, 50, 100],
             data: { url: data.url || '/' }
@@ -17,6 +24,9 @@ self.addEventListener('push', function (event) {
     }
 });
 
+// ==========================================
+// Web Push: handle notification click
+// ==========================================
 self.addEventListener('notificationclick', function (event) {
     event.notification.close();
     event.waitUntil(
