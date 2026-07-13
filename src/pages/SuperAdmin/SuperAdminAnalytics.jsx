@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { useOutletContext } from "react-router-dom"; // ✨ Consumes global state from Layout
+import { useOutletContext } from "react-router-dom";
+import { useSelector } from "react-redux";
 import api from "../../api/axios";
 import {
     Users,
@@ -15,54 +16,28 @@ import {
     Monitor,
     MapPin,
     X,
-    CheckCircle2,
     Activity,
     Compass,
     Ban,
-    ArrowRight
+    ArrowRight,
+    Timer
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { UserDetailModal } from "../../components/modal/UserDetailModal";
 
-// STATIC DATA ---
-const packageEngagement = [
-    {
-        id: "pkg-1",
-        name: "Everest Base Camp Trek",
-        totalClicks: 1245,
-        authUsers: [
-            { id: "u1", name: "Rahul Sharma", email: "rahul.s@example.com", phone: "+91 98765 43210", photo: "R", status: "active", location: "Sultanpur, India", totalVisits: 14, lastSeen: "2 hours ago", mostViewed: "Everest Base Camp Trek", topVibe: "High Altitude Trekking", leadScore: "Hot" },
-            { id: "u2", name: "Priya Patel", email: "priya99@example.com", phone: "+91 87654 32109", photo: "P", status: "active", location: null, totalVisits: 5, lastSeen: "1 day ago", mostViewed: "Everest Base Camp Trek", topVibe: "High Altitude Trekking", leadScore: "Warm" },
-        ],
-        anonUsers: [
-            { id: "a1", device: "Mobile", browser: "Safari", location: "Mumbai, India", time: "10 mins ago" },
-            { id: "a2", device: "Desktop", browser: "Chrome", location: "London, UK", time: "45 mins ago" },
-        ],
-        anonTotal: 890
-    },
-    {
-        id: "pkg-2",
-        name: "Kathmandu Heritage Tour",
-        totalClicks: 856,
-        authUsers: [
-            { id: "u3", name: "Amit Kumar", email: "amit.k@example.com", phone: "+91 76543 21098", photo: "A", status: "banned", location: "New Delhi, India", totalVisits: 42, lastSeen: "3 days ago", mostViewed: "Kathmandu Heritage Tour", topVibe: "Culture & City", leadScore: "Spam" },
-        ],
-        anonUsers: [
-            { id: "a4", device: "Desktop", browser: "Edge", location: "New York, USA", time: "5 mins ago" },
-        ],
-        anonTotal: 700
-    }
-];
-
 export default function SuperAdminAnalytics() {
     // ✨ CONSUME GLOBAL STATE FROM LAYOUT
     const { metrics, socketInstance } = useOutletContext();
+    const { user } = useSelector((state) => state.auth);
 
-    // 🐛 FIX: Moved state inside the component body
     const [discoverStats, setDiscoverStats] = useState([]);
 
+    // ✨ NEW: Dynamic Live State for Package Engagement (Cleaned of Anonymous schema data)
+    const [packageEngagement, setPackageEngagement] = useState([]);
     const [expandedRow, setExpandedRow] = useState(null);
-    const [rowTab, setRowTab] = useState("auth");
+
+    // ✨ LIVE PRESENCE STATE
+    const [livePresence, setLivePresence] = useState({}); // { [userId]: { isOnline, lastSeenAt } }
 
     // Modal States
     const [activeModal, setActiveModal] = useState(null); // 'inquiries', 'pending', 'media', 'discoverDetails', 'user360'
@@ -72,7 +47,7 @@ export default function SuperAdminAnalytics() {
     // ✨ REAL-TIME LIVE GALLERY STATE
     const [liveTopMedia, setLiveTopMedia] = useState([]);
 
-    // Fetch the real top 50 media assets from your database on mount
+    // Fetch baseline data on mount
     useEffect(() => {
         const fetchTopGallery = async () => {
             try {
@@ -84,25 +59,41 @@ export default function SuperAdminAnalytics() {
                 console.error("Failed to load top gallery items", error);
             }
         };
-        fetchTopGallery();
 
         const fetchVibeStats = async () => {
             try {
-                // Note: You'll need to make a quick GET /discover/track endpoint 
-                // that just returns the broadcastVibeMetrics aggregate math.
                 const { data } = await api.get('/discover/track');
                 if (data.success) setDiscoverStats(data.data);
             } catch (error) {
                 console.error("Failed to load initial vibe stats", error);
             }
         };
+
+        // ✨ NEW: Fetch baseline package tracking using new aggregation payload
+        const fetchPackageAnalytics = async () => {
+            try {
+                const { data } = await api.get('/superadmin/package-analytics');
+                const analyticsData = data.success ? data.data : data;
+                if (Array.isArray(analyticsData)) {
+                    const normalized = analyticsData.map(p => ({ ...p, id: p.packageId }));
+                    setPackageEngagement(normalized.sort((a, b) => b.sevenDayTotalTime - a.sevenDayTotalTime));
+                }
+            } catch (error) {
+                console.error("Failed to load baseline package analytics", error);
+            }
+        };
+
+        fetchTopGallery();
         fetchVibeStats();
+        fetchPackageAnalytics();
+
+        // Expose the fetch function so the socket effect below can call it too
+        window.__fetchPackageAnalytics = fetchPackageAnalytics;
     }, []);
 
-    // Listen for real-time gallery clicks and dynamically re-sort the UI!
+    // ✨ REAL-TIME STREAMING SOCKET LISTENER
     useEffect(() => {
         if (socketInstance) {
-            // 1. Existing Gallery Update Listener
             const handleGalleryUpdate = (payload) => {
                 setLiveTopMedia(prev => {
                     const updated = prev.map(m =>
@@ -110,30 +101,60 @@ export default function SuperAdminAnalytics() {
                             ? { ...m, allTimeViews: payload.allTimeViews, trendingViews: payload.trendingViews }
                             : m
                     );
-                    // ✨ Re-sort explicitly by TRENDING views (last 7 days)
                     return updated.sort((a, b) => b.trendingViews - a.trendingViews);
                 });
             };
 
-            // 2. ✨ NEW: Vibe Intent Telemetry Listener
             const handleVibeUpdate = (payload) => {
-                // The backend sends the perfectly formatted and sorted array
                 setDiscoverStats(payload);
             };
 
-            // Bind both events
+            // ✨ UPDATED: Listens to the redesigned aggregation payload shape in real-time
+            // not the full stats object — so we just refetch the authoritative data.
+            let refetchTimeout = null;
+            const handlePackageUpdate = () => {
+                // Debounce: multiple pings in quick succession (heartbeats every 5s)
+                // should only trigger one refetch, not a flood of requests.
+                if (refetchTimeout) clearTimeout(refetchTimeout);
+                refetchTimeout = setTimeout(async () => {
+                    try {
+                        const { data } = await api.get('/superadmin/package-analytics');
+                        const analyticsData = data.success ? data.data : data;
+                        if (Array.isArray(analyticsData)) {
+                            const normalized = analyticsData.map(p => ({ ...p, id: p.packageId }));
+                            setPackageEngagement(normalized.sort((a, b) => b.sevenDayTotalTime - a.sevenDayTotalTime));
+                        }
+                    } catch (error) {
+                        console.error("Failed to refresh package analytics after live ping", error);
+                    }
+                }, 800);
+            };
+
+            // ✨ NEW: Catch live presence updates
+            const handlePresenceUpdate = ({ userId, isOnline, lastSeenAt }) => {
+                setLivePresence(prev => ({
+                    ...prev,
+                    [userId]: { isOnline, lastSeenAt }
+                }));
+            };
+
+            // Bind events
             socketInstance.on('gallery_view_update', handleGalleryUpdate);
             socketInstance.on('vibe_intent_update', handleVibeUpdate);
+            socketInstance.on('package_engagement_update', handlePackageUpdate);
+            socketInstance.on('user_presence_update', handlePresenceUpdate); // ✨ Bound presence listener
 
-            // Cleanup both events on unmount
+            // Cleanup on unmount
             return () => {
                 socketInstance.off('gallery_view_update', handleGalleryUpdate);
                 socketInstance.off('vibe_intent_update', handleVibeUpdate);
+                socketInstance.off('package_engagement_update', handlePackageUpdate);
+                socketInstance.off('user_presence_update', handlePresenceUpdate); // ✨ Cleaned up
             };
         }
     }, [socketInstance]);
 
-    // ✨ DYNAMIC KPI DATA LINKED TO LAYOUT CONTEXT
+    // ✨ KPI MAPPINGS
     const dynamicKpiData = [
         {
             id: "visitors",
@@ -179,116 +200,181 @@ export default function SuperAdminAnalytics() {
         };
     }, [activeModal, selectedMedia]);
 
-    const toggleRow = (id) => {
-        if (expandedRow === id) {
-            setExpandedRow(null);
-        } else {
-            setExpandedRow(id);
-            setRowTab("auth");
+    const toggleRow = (id) => setExpandedRow(expandedRow === id ? null : id);
+    const openModal = (type, data = null) => { setActiveModal(type); setModalData(data); };
+    const closeModal = () => { setActiveModal(null); setModalData(null); };
+
+    // ✨ Always resolve the live, authoritative visit count for whichever user's modal we open
+    const openUserModal = async (userLike) => {
+        const uid = userLike.id || userLike.userId || userLike._id;
+
+        // Resolve current known live presence
+        const isCurrentlyOnline = livePresence[uid]?.isOnline ?? userLike.isOnline ?? false;
+        const currentLastSeen = livePresence[uid]?.lastSeenAt
+            ? new Date(livePresence[uid].lastSeenAt).toLocaleString()
+            : userLike.lastSeen;
+
+        // Open immediately with what we already have — no spinner delay
+        setActiveModal('user360');
+        setModalData({
+            ...userLike,
+            id: uid,
+            totalVisits: userLike.totalVisits ?? 0,
+            isOnline: isCurrentlyOnline,
+            lastSeen: currentLastSeen
+        });
+
+        if (!uid) return;
+
+        try {
+            const { data } = await api.get(`/user/${uid}`);
+            if (data?.user) {
+                setModalData(prev => (prev && (prev.id === uid || prev.userId === uid))
+                    ? {
+                        ...prev,
+                        totalVisits: data.user.totalPackageVisits || 0,
+                        photo: data.user.profilePic || prev.photo,
+                        isOnline: livePresence[uid]?.isOnline ?? data.user.isOnline,
+                        lastSeen: livePresence[uid]
+                            ? (livePresence[uid].isOnline ? prev.lastSeen : new Date(livePresence[uid].lastSeenAt).toLocaleString())
+                            : (data.user.lastSeen ? new Date(data.user.lastSeen).toLocaleString() : prev.lastSeen)
+                    }
+                    : prev
+                );
+            }
+        } catch (error) {
+            console.error("Failed to fetch live visit count for user", error);
         }
     };
 
-    const openModal = (type, data = null) => {
-        setActiveModal(type);
-        setModalData(data);
-    };
+    // ✨ Keep an open modal's visit count in sync with real-time package analytics refreshes
+    useEffect(() => {
+        if (activeModal !== 'user360' || !modalData) return;
+        const uid = modalData.id || modalData.userId;
+        if (!uid) return;
 
-    const closeModal = () => {
-        setActiveModal(null);
-        setModalData(null);
-    };
+        for (const pkg of packageEngagement) {
+            const match = pkg.topUsers?.find(u => (u.userId || u.id) === uid);
+            if (match) {
+                setModalData(prev => (prev && (prev.id === uid || prev.userId === uid))
+                    ? { ...prev, totalVisits: match.totalVisits ?? prev.totalVisits }
+                    : prev
+                );
+                break;
+            }
+        }
+    }, [packageEngagement]);
 
-    // Grab just the top 3 for the preview cards on the main dashboard
+    // ✨ Keep an open modal's presence in sync with real-time socket events
+    useEffect(() => {
+        if (activeModal !== 'user360' || !modalData) return;
+        const uid = modalData.id || modalData.userId;
+        const presence = livePresence[uid];
+
+        if (presence) {
+            setModalData(prev => (prev && (prev.id === uid || prev.userId === uid))
+                ? {
+                    ...prev,
+                    isOnline: presence.isOnline,
+                    lastSeen: presence.isOnline ? prev.lastSeen : new Date(presence.lastSeenAt).toLocaleString()
+                }
+                : prev
+            );
+        }
+    }, [livePresence]);
+
     const top3Media = liveTopMedia.slice(0, 3);
 
+    // ✨ RENDER LEADBOARD CONTENT (Pre-sorted Top 10 Authenticated Users list)
+    // -------------------------------------------------------------------------
+    // RESOLVED: Handled layout wrapping and truncating to fix mobile overflowing
     const renderExpandedContent = (pkg) => (
-        <div className="p-4 md:p-6">
-            <div className="flex gap-2 border-b border-border/40 pb-3 mb-4">
-                <button
-                    onClick={() => setRowTab("auth")}
-                    className={`px-3 md:px-4 py-1.5 text-xs md:text-sm font-bold rounded-full transition-all ${rowTab === 'auth' ? 'bg-[#2A5244] text-white' : 'bg-transparent text-muted-foreground hover:bg-muted'}`}
-                >
-                    Auth Leads ({pkg.authUsers.length})
-                </button>
-                <button
-                    onClick={() => setRowTab("anon")}
-                    className={`px-3 md:px-4 py-1.5 text-xs md:text-sm font-bold rounded-full transition-all ${rowTab === 'anon' ? 'bg-slate-700 text-white' : 'bg-transparent text-muted-foreground hover:bg-muted'}`}
-                >
-                    Anonymous ({pkg.anonTotal})
-                </button>
+        <div className="p-4 md:p-6 bg-slate-50/50 rounded-b-2xl border-t border-border/40">
+            <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-start sm:items-center gap-1.5 leading-snug">
+                    <Timer className="h-4 w-4 text-[#FA6D16] shrink-0 mt-0.5 sm:mt-0" />
+                    <span>Top 10 Active Leads <span className="block sm:inline mt-0.5 sm:mt-0 text-[10px] sm:text-xs text-muted-foreground sm:text-slate-500">(Ranked by 7-Day Attention velocity)</span></span>
+                </h4>
+                <span className="text-[11px] text-muted-foreground font-semibold italic border-t border-border/40 sm:border-0 pt-2 sm:pt-0 shrink-0">
+                    Excludes card-only viewers who never clicked details
+                </span>
             </div>
 
-            {rowTab === 'auth' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {pkg.authUsers.length > 0 ? pkg.authUsers.map((user) => (
-                        <div
-                            key={user.id}
-                            onClick={() => openModal('user360', user)}
-                            className="flex items-center justify-between p-4 bg-white border border-border/40 rounded-xl hover:border-[#2A5244]/50 hover:shadow-md transition-all cursor-pointer group"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className={`h-10 w-10 shrink-0 rounded-full flex items-center justify-center font-bold text-white ${user.status === 'banned' ? 'bg-red-500' : 'bg-[#2A5244]'}`}>
-                                    {user.photo}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                {pkg.topUsers && pkg.topUsers.length > 0 ? pkg.topUsers.map((user) => (
+                    <div
+                        key={user.userId}
+                        onClick={() => openUserModal(user)}
+                        className="flex flex-col p-4 bg-white border border-border/40 rounded-xl hover:border-[#2A5244]/50 hover:shadow-md transition-all cursor-pointer group overflow-hidden"
+                    >
+                        {/* Row Core Meta */}
+                        <div className="flex items-center justify-between mb-3 gap-3">
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                {/* ✨ WRAPPED IN RELATIVE CONTAINER FOR LIVE DOT */}
+                                <div className="relative shrink-0">
+                                    <div className={`h-10 w-10 rounded-full flex items-center justify-center font-black text-white overflow-hidden shadow-inner ${user.status === 'banned' ? 'bg-red-500' : 'bg-[#2A5244]'}`}>
+                                        {user.photo && user.photo.length > 1 ? (
+                                            <img src={user.photo} alt={user.name} className="h-full w-full object-cover" />
+                                        ) : (
+                                            user.photo || (user.name ? user.name.charAt(0).toUpperCase() : 'U')
+                                        )}
+                                    </div>
+                                    {(livePresence[user.userId]?.isOnline ?? user.isOnline) && (
+                                        <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 border-2 border-white shadow-sm" />
+                                    )}
                                 </div>
-                                <div className="min-w-0">
-                                    <p className="font-bold text-foreground truncate group-hover:text-[#2A5244] transition-colors flex items-center gap-1.5">
-                                        {user.name}
+                                <div className="min-w-0 flex-1">
+                                    <p className="font-bold text-foreground text-sm truncate group-hover:text-[#2A5244] transition-colors flex items-center gap-1.5 w-full">
+                                        <span className="truncate">{user.name || "Unknown User"}</span>
                                         {user.status === 'banned' && <Ban className="h-3 w-3 text-red-500 shrink-0" />}
                                     </p>
-                                    <p className="text-xs text-muted-foreground font-medium truncate">{user.email}</p>
+                                    <p className="text-xs text-muted-foreground font-medium truncate w-full">{user.email || "No email"}</p>
                                 </div>
                             </div>
-                            <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
-                                <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${user.leadScore === 'Hot' ? 'bg-[#FA6D16]/10 text-[#FA6D16]' :
-                                    user.leadScore === 'Spam' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
-                                    }`}>
-                                    {user.leadScore}
-                                </span>
+
+                            <div className="text-right shrink-0">
+                                <div className="flex items-center gap-1 justify-end text-sm font-black text-[#2A5244]">
+                                    <MousePointerClick className="h-3.5 w-3.5 shrink-0" /> {user.sevenDayClicksOnThisPackage || 0}
+                                </div>
+                                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block mt-0.5">7d Clicks</span>
                             </div>
                         </div>
-                    )) : (
-                        <p className="text-muted-foreground text-sm italic p-4 md:p-6 border border-dashed border-border/60 rounded-xl text-center bg-white md:col-span-2">
-                            No authenticated leads have viewed this package yet.
-                        </p>
-                    )}
-                </div>
-            )}
 
-            {rowTab === 'anon' && (
-                <div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {pkg.anonUsers.map((anon) => (
-                            <div key={anon.id} className="flex items-start gap-3 p-3 bg-white border border-border/40 rounded-lg">
-                                <div className="mt-0.5 text-slate-400">
-                                    {anon.device === 'Mobile' ? <Smartphone className="h-4 w-4" /> : <Monitor className="h-4 w-4" />}
+                        {/* Direct Tier Breakdown Tags & Exact Durations Mapping */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-3 border-t border-border/40">
+                            {user.tiers && user.tiers.map((t, idx) => (
+                                <div key={idx} className="flex flex-col bg-[#FDFBF7] rounded-lg p-2.5 border border-border/60 min-w-0">
+                                    <span className="text-[9px] font-black uppercase tracking-wider text-slate-500 mb-1.5 block truncate">{t.tier} Plan</span>
+                                    <div className="flex flex-col gap-1 text-[11px] sm:text-xs">
+                                        <span className="font-bold text-[#FA6D16] flex items-center gap-1 truncate">
+                                            <Timer className="h-3 w-3 shrink-0" /> {t.sevenDaySeconds}s <span className="text-[9px] text-muted-foreground font-medium shrink-0">(7d)</span>
+                                        </span>
+                                        <span className="font-semibold text-slate-500 flex items-center gap-1 truncate">
+                                            <Clock className="h-3 w-3 shrink-0" /> {t.allTimeSeconds}s <span className="text-[9px] text-muted-foreground font-medium shrink-0">(Total)</span>
+                                        </span>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-xs font-bold text-foreground">{anon.device} • {anon.browser}</p>
-                                    <p className="text-[10px] font-medium text-muted-foreground flex items-center gap-1 mt-1">
-                                        <MapPin className="h-3 w-3" /> {anon.location}
-                                    </p>
-                                    <p className="text-[10px] font-medium text-muted-foreground flex items-center gap-1 mt-0.5">
-                                        <Clock className="h-3 w-3" /> {anon.time}
-                                    </p>
-                                </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
-                </div>
-            )}
+                )) : (
+                    <p className="text-muted-foreground text-sm italic p-4 md:p-6 border border-dashed border-border/60 rounded-xl text-center bg-white md:col-span-2 xl:col-span-2">
+                        No authenticated users meet the activity requirements for this package yet.
+                    </p>
+                )}
+            </div>
         </div>
     );
 
     return (
         <div className="space-y-8 pb-12 font-sans bg-[#FDFBF7] min-h-full">
-
             {/* Header */}
             <div>
                 <h1 className="text-3xl md:text-4xl font-bold font-serif text-foreground tracking-tight">Business Intelligence</h1>
-                <p className="text-sm md:text-base text-muted-foreground mt-2">Monitor traffic, visual engagement, and top-of-funnel leads.</p>
+                <p className="text-sm md:text-base text-muted-foreground mt-2">Monitor traffic analytics, premium tier engagement, and active user velocity loops.</p>
             </div>
 
-            {/* KPI Cards (Mapped to layout context state) */}
+            {/* KPI Cards */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 {dynamicKpiData.map((kpi, idx) => {
                     const Icon = kpi.icon;
@@ -316,133 +402,81 @@ export default function SuperAdminAnalytics() {
             </div>
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
-
-                {/* Discover Intent Tracking (Left Col) */}
+                {/* Vibe Intent Tracking */}
                 <div className="lg:col-span-1 space-y-6">
                     <div className="bg-white border border-border/40 rounded-2xl shadow-sm p-6">
                         <div className="flex items-start justify-between mb-6 border-b border-border/40 pb-4">
                             <div>
                                 <h2 className="text-xl font-bold font-serif text-foreground">Vibe Intent</h2>
-                                <p className="text-[10px] text-muted-foreground font-medium mt-1 uppercase tracking-wider">
-                                    Records obtained: Jul 1, 2026 - Jul 7, 2026
-                                </p>
+                                <p className="text-[10px] text-muted-foreground font-medium mt-1 uppercase tracking-wider">Real-time discovery insights</p>
                             </div>
                             <TrendingUp className="h-5 w-5 text-[#2A5244] shrink-0" />
                         </div>
-
                         <div className="space-y-5">
-                            {(() => {
-                                // Calculate maxClicks safely ONCE outside the loop
-                                const maxClicks = discoverStats.length > 0
-                                    ? Math.max(...discoverStats.map(s => s.clicks))
-                                    : 1;
+                            {discoverStats.map((stat, idx) => {
+                                const maxClicks = discoverStats.length > 0 ? Math.max(...discoverStats.map(s => s.clicks)) : 1;
+                                const clickPercent = maxClicks > 0 ? (stat.clicks / maxClicks) * 100 : 0;
+                                const conversionRate = stat.clicks > 0 ? Math.round((stat.galleryConversions / stat.clicks) * 100) : 0;
 
-                                return discoverStats.map((stat, idx) => {
-                                    // Prevent NaN if clicks are 0
-                                    const clickPercent = maxClicks > 0 ? (stat.clicks / maxClicks) * 100 : 0;
-
-                                    const conversionRate = stat.clicks > 0
-                                        ? Math.round((stat.galleryConversions / stat.clicks) * 100)
-                                        : 0;
-
-                                    return (
-                                        <div
-                                            key={idx}
-                                            onClick={() => openModal('discoverDetails', stat)}
-                                            className="group cursor-pointer p-2 -mx-2 rounded-lg hover:bg-muted/50 transition-colors"
-                                        >
-                                            <div className="flex justify-between text-sm mb-2">
-                                                <span className="font-bold text-foreground group-hover:text-[#2A5244] transition-colors">{stat.vibe}</span>
-                                                <span className="text-muted-foreground font-medium text-xs">{stat.clicks} views</span>
-                                            </div>
-                                            <div className="h-2.5 w-full bg-muted rounded-full overflow-hidden flex shadow-inner">
-                                                <div
-                                                    className="h-full bg-[#2A5244] rounded-full transition-all duration-1000 ease-out group-hover:bg-[#FA6D16]"
-                                                    style={{ width: `${clickPercent}%` }}
-                                                />
-                                            </div>
-                                            <div className="mt-2 flex items-center justify-between text-[10px] md:text-xs font-semibold text-muted-foreground">
-                                                <div className="flex items-center gap-1.5 text-[#FA6D16]">
-                                                    <MousePointerClick className="h-3.5 w-3.5" />
-                                                    <span>{stat.galleryConversions} Gallery Clicks</span>
-                                                </div>
-                                                <span className="bg-[#2A5244]/10 text-[#2A5244] px-2 py-0.5 rounded-full">{conversionRate}% Conversion</span>
-                                            </div>
+                                return (
+                                    <div key={idx} onClick={() => openModal('discoverDetails', stat)} className="group cursor-pointer p-2 -mx-2 rounded-lg hover:bg-muted/50 transition-colors">
+                                        <div className="flex justify-between text-sm mb-2">
+                                            <span className="font-bold text-foreground group-hover:text-[#2A5244] transition-colors">{stat.vibe}</span>
+                                            <span className="text-muted-foreground font-medium text-xs">{stat.clicks} views</span>
                                         </div>
-                                    );
-                                });
-                            })()}
+                                        <div className="h-2.5 w-full bg-muted rounded-full overflow-hidden flex shadow-inner">
+                                            <div className="h-full bg-[#2A5244] rounded-full transition-all duration-1000 ease-out group-hover:bg-[#FA6D16]" style={{ width: `${clickPercent}%` }} />
+                                        </div>
+                                        <div className="mt-2 flex items-center justify-between text-[10px] md:text-xs font-semibold text-muted-foreground">
+                                            <div className="flex items-center gap-1.5 text-[#FA6D16]">
+                                                <MousePointerClick className="h-3.5 w-3.5" />
+                                                <span>{stat.galleryConversions} Gallery Clicks</span>
+                                            </div>
+                                            <span className="bg-[#2A5244]/10 text-[#2A5244] px-2 py-0.5 rounded-full">{conversionRate}% Conversion</span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            {discoverStats.length === 0 && <p className="text-muted-foreground text-sm italic text-center py-4">No discovery metrics recorded.</p>}
                         </div>
                     </div>
                 </div>
 
-                {/* ✨ LIVE TOP PERFORMING MEDIA PREVIEW CARDS (Middle/Right Col) */}
+                {/* Live Top Performing Media Preview Cards */}
                 <div className="lg:col-span-2">
                     <div className="bg-white border border-border/40 rounded-2xl shadow-sm p-6 h-full flex flex-col">
                         <div className="flex items-center justify-between mb-4 border-b border-border/40 pb-4">
                             <h2 className="text-xl font-bold font-serif text-foreground">Top Performing Media</h2>
                             <ImageIcon className="h-5 w-5 text-[#2A5244]" />
                         </div>
-                        <p className="text-sm text-muted-foreground mb-6">Visuals that are driving the most engagement and clicks on your site right now.</p>
-
+                        <p className="text-sm text-muted-foreground mb-6">Visual assets driving active platform conversion loops.</p>
                         {top3Media.length === 0 ? (
                             <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-border/60 rounded-xl p-8 bg-muted/20">
                                 <ImageIcon className="h-10 w-10 text-muted-foreground mb-3 opacity-50" />
-                                <p className="text-muted-foreground font-medium">No media tracked yet.</p>
+                                <p className="text-muted-foreground font-medium">No media logs established.</p>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                                 {top3Media.map((img) => (
-                                    <div
-                                        key={img._id}
-                                        onClick={() => setSelectedMedia(img)}
-                                        className="group relative rounded-xl overflow-hidden shadow-sm aspect-video cursor-pointer bg-black"
-                                    >
-                                        <img
-                                            src={img.fileType === 'video' ? (img.thumbnailUrl || '/video-placeholder.png') : img.mediaUrl}
-                                            alt={img.title}
-                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-80 group-hover:opacity-100"
-                                        />
-
-                                        {/* Location Badge (Bottom Left) */}
-                                        <div className="absolute bottom-3 left-3 flex items-center bg-black/60 backdrop-blur-md rounded-full px-2.5 py-1 border border-white/10 shadow-lg">
-                                            <MapPin size={12} className="text-[#FA6D16] mr-1.5" />
-                                            <span className="text-white text-[10px] font-bold uppercase tracking-widest">{img.locationTag}</span>
-                                        </div>
-
-                                        {/* Views Badge (Top Right) */}
-                                        <div className="absolute top-3 right-3 flex items-center gap-2 bg-black/60 backdrop-blur-md rounded-full px-2.5 py-1 border border-white/10 shadow-lg">
-                                            <span className="flex items-center gap-1 text-[#FA6D16] text-[10px] font-bold">
-                                                <TrendingUp size={12} /> {img.trendingViews}
-                                            </span>
-                                            <span className="flex items-center gap-1 text-emerald-400 text-[10px] font-bold border-l border-white/20 pl-2">
-                                                <Eye size={12} /> {img.allTimeViews}
-                                            </span>
-                                        </div>
+                                    <div key={img._id} onClick={() => setSelectedMedia(img)} className="group relative rounded-xl overflow-hidden shadow-sm aspect-video cursor-pointer bg-black">
+                                        <img src={img.fileType === 'video' ? (img.thumbnailUrl || '/video-placeholder.png') : img.mediaUrl} alt={img.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-80 group-hover:opacity-100" />
+                                        <div className="absolute bottom-3 left-3 flex items-center bg-black/60 backdrop-blur-md rounded-full px-2.5 py-1 border border-white/10 shadow-lg max-w-[85%]"><MapPin size={12} className="text-[#FA6D16] mr-1.5 shrink-0" /><span className="text-white text-[10px] font-bold uppercase tracking-widest truncate">{img.locationTag}</span></div>
                                     </div>
                                 ))}
                             </div>
                         )}
-
                         <div className="mt-auto text-center border-t border-border/40 pt-4">
-                            <button
-                                onClick={() => openModal('media')}
-                                className="inline-flex items-center gap-2 text-sm font-bold text-[#2A5244] hover:text-[#FA6D16] transition-colors"
-                            >
-                                View Top 50 Media Assets <ArrowRight className="h-4 w-4" />
-                            </button>
+                            <button onClick={() => openModal('media')} className="inline-flex items-center gap-2 text-sm font-bold text-[#2A5244] hover:text-[#FA6D16] transition-colors">View Top 50 Media Assets <ArrowRight className="h-4 w-4" /></button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Package Engagement Tracking */}
+            {/* Package Engagement Tracking Grid/Table Section */}
             <div className="mt-8">
                 <div className="mb-4">
-                    <h2 className="text-xl font-bold font-serif text-foreground flex items-center gap-2">
-                        <Compass className="h-6 w-6 text-[#2A5244]" /> Package Traffic & Leads
-                    </h2>
-                    <p className="text-sm text-muted-foreground mt-1">Track which packages are capturing user interest.</p>
+                    <h2 className="text-xl font-bold font-serif text-foreground flex items-center gap-2"><Compass className="h-6 w-6 text-[#2A5244]" /> Package Traffic & Leads</h2>
+                    <p className="text-sm text-muted-foreground mt-1">Cross-examine direct customer attention data windows side-by-side.</p>
                 </div>
 
                 {/* DESKTOP TABLE VIEW */}
@@ -451,8 +485,9 @@ export default function SuperAdminAnalytics() {
                         <thead className="text-xs text-muted-foreground uppercase bg-[#FDFBF7] border-b border-border/40">
                             <tr>
                                 <th className="px-6 py-4 font-bold tracking-wider">Package Name</th>
-                                <th className="px-6 py-4 font-bold tracking-wider text-center">Total Clicks</th>
-                                <th className="px-6 py-4 font-bold tracking-wider text-center">Traffic Split</th>
+                                <th className="px-6 py-4 font-bold tracking-wider text-center">All-Time Clicks</th>
+                                <th className="px-6 py-4 font-bold tracking-wider text-center">Last 7 Days Clicks</th>
+                                <th className="px-6 py-4 font-bold tracking-wider text-center">7d Total Dwell Time</th>
                                 <th className="px-6 py-4 font-bold tracking-wider text-right">Insights</th>
                             </tr>
                         </thead>
@@ -460,46 +495,34 @@ export default function SuperAdminAnalytics() {
                             {packageEngagement.map((pkg) => (
                                 <React.Fragment key={pkg.id}>
                                     <tr className={`hover:bg-[#FDFBF7] transition-colors ${expandedRow === pkg.id ? 'bg-[#FDFBF7]' : ''}`}>
-                                        <td className="px-6 py-5 font-bold text-foreground whitespace-nowrap">
-                                            {pkg.name}
+                                        <td className="px-6 py-5 font-bold text-foreground whitespace-nowrap">{pkg.name}</td>
+                                        <td className="px-6 py-5 text-center font-black text-slate-500">{pkg.allTimeClicks || 0}</td>
+                                        <td className="px-6 py-5 text-center font-black text-[#2A5244] flex items-center justify-center gap-1">
+                                            <TrendingUp className="h-4 w-4 text-[#FA6D16]" /> {pkg.sevenDayClicks || 0}
                                         </td>
-                                        <td className="px-6 py-5 text-center font-black text-lg text-[#2A5244]">
-                                            {pkg.totalClicks}
-                                        </td>
-                                        <td className="px-6 py-5 text-center">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#2A5244]/10 text-[#2A5244] font-bold text-xs border border-[#2A5244]/20">
-                                                    {pkg.authUsers.length} Auth Leads
-                                                </span>
-                                                <span className="text-muted-foreground text-xs font-bold">+</span>
-                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 font-bold text-xs border border-slate-200">
-                                                    {pkg.anonTotal} Anon
-                                                </span>
-                                            </div>
-                                        </td>
+                                        <td className="px-6 py-5 text-center font-black text-[#FA6D16]">{pkg.sevenDayTotalTime || 0}s</td>
                                         <td className="px-6 py-5 text-right">
-                                            <button
-                                                onClick={() => toggleRow(pkg.id)}
-                                                className="inline-flex items-center justify-center p-2 rounded-full hover:bg-muted text-[#2A5244] transition-colors focus:outline-none focus:ring-2 focus:ring-[#2A5244]/50"
-                                            >
+                                            <button onClick={() => toggleRow(pkg.id)} className="inline-flex items-center justify-center p-2 rounded-full hover:bg-muted text-[#2A5244] transition-colors focus:outline-none focus:ring-2 focus:ring-[#2A5244]/50">
                                                 {expandedRow === pkg.id ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                                             </button>
                                         </td>
                                     </tr>
                                     <AnimatePresence>
                                         {expandedRow === pkg.id && (
-                                            <motion.tr
-                                                initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-                                                className="bg-muted/10 border-b border-border/40"
-                                            >
-                                                <td colSpan="4" className="p-0">
-                                                    {renderExpandedContent(pkg)}
-                                                </td>
+                                            <motion.tr initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="bg-muted/10 border-b border-border/40">
+                                                <td colSpan="5" className="p-0">{renderExpandedContent(pkg)}</td>
                                             </motion.tr>
                                         )}
                                     </AnimatePresence>
                                 </React.Fragment>
                             ))}
+                            {packageEngagement.length === 0 && (
+                                <tr>
+                                    <td colSpan="5" className="px-6 py-8 text-center text-muted-foreground italic">
+                                        No package analytics available yet.
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
@@ -508,66 +531,41 @@ export default function SuperAdminAnalytics() {
                 <div className="md:hidden flex flex-col gap-4">
                     {packageEngagement.map((pkg) => (
                         <div key={pkg.id} className="bg-white border border-border/40 rounded-xl shadow-sm overflow-hidden flex flex-col">
-                            <div
-                                onClick={() => toggleRow(pkg.id)}
-                                className="p-4 flex flex-col gap-3 active:bg-muted/50 transition-colors cursor-pointer"
-                            >
+                            <div onClick={() => toggleRow(pkg.id)} className="p-4 flex flex-col gap-3 active:bg-muted/50 transition-colors cursor-pointer">
                                 <div className="flex justify-between items-start">
                                     <h3 className="font-bold text-foreground leading-tight pr-2">{pkg.name}</h3>
-                                    <div className="text-[#2A5244] shrink-0">
-                                        {expandedRow === pkg.id ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                                    </div>
+                                    <div className="text-[#2A5244] shrink-0">{expandedRow === pkg.id ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}</div>
                                 </div>
-
-                                <div className="flex items-center justify-between mt-1">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-[10px] md:text-xs font-semibold text-[#2A5244] bg-[#2A5244]/10 px-2 py-0.5 rounded-md">
-                                            {pkg.authUsers.length} Auth
-                                        </span>
-                                        <span className="text-[10px] md:text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
-                                            {pkg.anonTotal} Anon
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center shrink-0">
-                                        <span className="text-xs font-black text-[#2A5244] flex items-center gap-1">
-                                            <MousePointerClick className="h-3.5 w-3.5" /> {pkg.totalClicks}
-                                        </span>
-                                    </div>
+                                <div className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">
+                                    <div className="flex justify-between"><span>All-Time Clicks:</span><span className="font-black text-slate-700">{pkg.allTimeClicks}</span></div>
+                                    <div className="flex justify-between text-[#2A5244]"><span>7d Clicks:</span><span className="font-black flex items-center gap-1"><TrendingUp size={12} className="text-[#FA6D16]" /> {pkg.sevenDayClicks}</span></div>
+                                    <div className="flex justify-between text-[#FA6D16]"><span>7d Velocity Time:</span><span className="font-black">{pkg.sevenDayTotalTime}s</span></div>
                                 </div>
                             </div>
-
                             <AnimatePresence>
                                 {expandedRow === pkg.id && (
-                                    <motion.div
-                                        initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-                                        className="bg-muted/10 border-t border-border/40"
-                                    >
+                                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="bg-muted/10 border-t border-border/40">
                                         {renderExpandedContent(pkg)}
                                     </motion.div>
                                 )}
                             </AnimatePresence>
                         </div>
                     ))}
+                    {packageEngagement.length === 0 && (
+                        <div className="bg-white border border-dashed border-border/60 rounded-xl p-8 text-center text-muted-foreground italic">
+                            No package analytics available yet.
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* ========================================= */}
-            {/* GLOBAL OVERLAY & MODALS */}
-            {/* ========================================= */}
+            {/* Global Overlays / Modals */}
             <AnimatePresence>
                 {activeModal && (
                     <>
-                        <motion.div
-                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            onClick={closeModal}
-                            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
-                        />
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={closeModal} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40" />
 
-                        <UserDetailModal
-                            isOpen={activeModal === 'user360'}
-                            onClose={closeModal}
-                            userData={modalData}
-                        />
+                        <UserDetailModal isOpen={activeModal === 'user360'} viewerRole={user?.role} onClose={closeModal} userData={modalData} />
 
                         {/* LIST MODALS (Inquiries / Pending) */}
                         {(activeModal === 'inquiries' || activeModal === 'pending') && (
@@ -637,7 +635,6 @@ export default function SuperAdminAnalytics() {
                                         </div>
                                     </div>
 
-                                    {/* ✨ UPDATED: Top Viewers Leaderboard is now clickable! */}
                                     {modalData.topUsers && modalData.topUsers.length > 0 && (
                                         <div className="mt-6 border-t border-border/40 pt-5">
                                             <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Top Registered Viewers</h3>
@@ -645,17 +642,17 @@ export default function SuperAdminAnalytics() {
                                                 {modalData.topUsers.map((u, i) => (
                                                     <div
                                                         key={i}
-                                                        // ✨ Open the User 360 modal and map the data gracefully
-                                                        onClick={() => openModal('user360', {
+                                                        // ✨ UPDATED to use openUserModal
+                                                        onClick={() => openUserModal({
                                                             id: u.id,
                                                             name: u.name || "Unknown User",
                                                             email: u.email || "No email provided",
-                                                            photo: u.name ? u.name.charAt(0).toUpperCase() : "U",
+                                                            photo: u.photo || (u.name ? u.name.charAt(0).toUpperCase() : "U"),
                                                             role: "User",
-                                                            topVibe: modalData.vibe, // Injects the current vibe as their top interest
-                                                            lastSeen: "Active Session",
-                                                            totalVisits: "Live Tracking",
-                                                            leadScore: u.timeSpent > 30 ? "Hot" : "Warm" // Dynamic score based on time
+                                                            topVibe: modalData.vibe,
+                                                            leadScore: u.timeSpent > 30 ? "Hot" : "Warm",
+                                                            isOnline: u.isOnline,
+                                                            lastSeen: u.lastSeen
                                                         })}
                                                         className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-border/60 shadow-sm cursor-pointer hover:border-[#2A5244]/50 hover:shadow-md transition-all group"
                                                     >
@@ -680,7 +677,7 @@ export default function SuperAdminAnalytics() {
                             </motion.div>
                         )}
 
-                        {/* ✨ LIVE TOP 50 GRID MODAL */}
+                        {/* LIVE TOP 50 GRID MODAL */}
                         {activeModal === 'media' && (
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -710,17 +707,14 @@ export default function SuperAdminAnalytics() {
                                                     loading="lazy"
                                                 />
 
-                                                {/* Rank Badge */}
                                                 <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-md border border-white/10 shadow-md">
                                                     #{index + 1}
                                                 </div>
 
-                                                {/* 7-Day Trending Views (Top Right) */}
                                                 <div className="absolute top-2 right-2 flex items-center gap-1 bg-[#FA6D16]/90 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded-md shadow-md">
                                                     <TrendingUp size={12} /> {media.trendingViews}
                                                 </div>
 
-                                                {/* Location (Bottom Left) */}
                                                 <div className="absolute bottom-2 left-2 right-2 flex items-center bg-black/60 backdrop-blur-md rounded-lg px-2.5 py-1.5 border border-white/10 shadow-lg">
                                                     <MapPin size={12} className="text-[#FA6D16] shrink-0 mr-1.5" />
                                                     <span className="text-white text-[10px] font-bold uppercase tracking-widest truncate">{media.locationTag}</span>
@@ -735,28 +729,18 @@ export default function SuperAdminAnalytics() {
                 )}
             </AnimatePresence>
 
-            {/* ========================================= */}
-            {/* FULL SCREEN MEDIA LIGHTBOX                */}
-            {/* ========================================= */}
+            {/* FULL SCREEN MEDIA LIGHTBOX */}
             <AnimatePresence>
                 {selectedMedia && (
                     <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         onClick={() => setSelectedMedia(null)}
                         className="fixed inset-0 z-100 bg-black/95 backdrop-blur-xl flex items-center justify-center p-4"
                     >
-                        {/* Cinematic Location Overlay (Bottom Left) */}
-                        <div
-                            className="absolute bottom-10 left-4 md:left-10 max-w-4xl z-110 pointer-events-auto flex flex-col gap-3"
-                            onClick={e => e.stopPropagation()}
-                        >
+                        <div className="absolute bottom-10 left-4 md:left-10 max-w-4xl z-110 pointer-events-auto flex flex-col gap-3" onClick={e => e.stopPropagation()}>
                             <div className="flex items-center gap-2 md:gap-4 drop-shadow-2xl">
                                 <MapPin size={32} className="text-[#FA6D16] drop-shadow-lg shrink-0 md:w-10 md:h-10" />
-                                <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-none">
-                                    {selectedMedia.locationTag}
-                                </h2>
+                                <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-none">{selectedMedia.locationTag}</h2>
                             </div>
                             <div className="flex items-center gap-4 mt-2 ml-1">
                                 <span className="flex items-center gap-1.5 text-[#FA6D16] font-bold bg-black/40 px-3 py-1.5 rounded-full border border-white/10 backdrop-blur-sm">
@@ -768,38 +752,18 @@ export default function SuperAdminAnalytics() {
                             </div>
                         </div>
 
-                        {/* Close Button (Top Right) */}
-                        <button
-                            onClick={() => setSelectedMedia(null)}
-                            className="absolute top-8 right-4 md:right-8 z-110 text-white hover:text-white/70 transition-colors p-3 bg-black/40 hover:bg-black/60 rounded-full border border-white/10 backdrop-blur-md shadow-2xl"
-                        >
+                        <button onClick={() => setSelectedMedia(null)} className="absolute top-8 right-4 md:right-8 z-110 text-white hover:text-white/70 transition-colors p-3 bg-black/40 hover:bg-black/60 rounded-full border border-white/10 backdrop-blur-md shadow-2xl">
                             <X size={24} />
                         </button>
 
-                        {/* Media Container */}
                         <motion.div
-                            initial={{ scale: 0.95, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.95, opacity: 0 }}
-                            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                            className="relative w-full h-full flex items-center justify-center"
-                            onClick={(e) => e.stopPropagation()}
+                            initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                            className="relative w-full h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}
                         >
                             {selectedMedia.fileType === 'video' ? (
-                                <video
-                                    src={selectedMedia.mediaUrl}
-                                    className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
-                                    controls
-                                    autoPlay
-                                    loop
-                                    playsInline
-                                />
+                                <video src={selectedMedia.mediaUrl} className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" controls autoPlay loop playsInline />
                             ) : (
-                                <img
-                                    src={selectedMedia.mediaUrl}
-                                    alt={selectedMedia.title}
-                                    className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl select-none"
-                                />
+                                <img src={selectedMedia.mediaUrl} alt={selectedMedia.title} className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl select-none" />
                             )}
                         </motion.div>
                     </motion.div>

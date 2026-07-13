@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useEffect, useState, useRef } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Outlet } from 'react-router-dom';
-import { ToastContainer } from 'react-toastify';
+import { ToastContainer, toast } from 'react-toastify'; // ✨ ADDED: Imported toast
 import 'react-toastify/dist/ReactToastify.css';
 import { Navbar } from './components/site/Navbar';
 import { Footer } from './components/site/Footer';
@@ -9,7 +9,7 @@ import './App.css';
 import RegisteredUsers from './pages/Admin/RegisteredUsers';
 import { SuperAdminLayout } from './components/superadmin/SuperAdminLayout';
 
-import { useDispatch, useSelector } from 'react-redux'; // ✨ Added useSelector
+import { useDispatch, useSelector } from 'react-redux';
 import { setCredentials, logOutState } from './store/slices/authSlice';
 import { setUploadJob } from './store/slices/uploadSlice';
 import FloatingUploadManager from './components/Gallery/FloatingUploadManager';
@@ -99,6 +99,7 @@ function UpdateNotification() {
 // ==========================================
 const PageLoader = () => (
   <div className="fixed inset-0 z-100 flex h-screen w-full flex-col items-center justify-center bg-[#FDFBF7]">
+    {/* Loader UI omitted for brevity, keep your exact UI here */}
     <div className="flex flex-col items-center justify-center gap-6">
       <div className="relative flex items-center justify-center h-32 w-32 md:h-40 md:w-40 rounded-full bg-linear-to-r from-slate-300 via-slate-100 to-slate-300 bg-size-[400%_100%] animate-[shimmer_1.5s_infinite_linear]">
         <div className="flex items-center justify-center h-[calc(100%-12px)] w-[calc(100%-12px)] rounded-full bg-[#FDFBF7]">
@@ -146,7 +147,7 @@ function PublicLayout() {
 // ==========================================
 function App() {
   const dispatch = useDispatch();
-  const { isAuthenticated } = useSelector((state) => state.auth); // ✨ Pull auth state
+  const { isAuthenticated } = useSelector((state) => state.auth);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const hasFetched = useRef(false);
 
@@ -159,6 +160,19 @@ function App() {
         const { data } = await api.post('/auth/refresh-token');
         dispatch(setCredentials({ user: data.user, accessToken: data.accessToken }));
       } catch (error) {
+        // ✨ NEW: Check if the error is specifically a ban action from the backend
+        if (
+          error.response &&
+          error.response.status === 403 &&
+          error.response.data?.message?.toLowerCase().includes('banned')
+        ) {
+          toast.error("Your account has been banned !!", {
+            position: "top-center",
+            autoClose: false, // Optional: forces user to see it until they click
+          });
+        }
+
+        // Log them out in Redux
         dispatch(logOutState());
       } finally {
         setIsCheckingAuth(false);
@@ -172,16 +186,13 @@ function App() {
     // Fire the traffic metric exactly ONCE per hard app load
     const logTrafficHit = async () => {
       try {
-        // ✨ 1. Check if this browser already has a permanent ID
         let visitorId = localStorage.getItem('nt_visitor_id');
 
-        // ✨ 2. If not, generate one and save it forever
         if (!visitorId) {
           visitorId = window.crypto?.randomUUID ? window.crypto.randomUUID() : `v_${Date.now()}_${Math.random()}`;
           localStorage.setItem('nt_visitor_id', visitorId);
         }
 
-        // ✨ 3. Send that exact ID to the backend
         await api.post('/analytics/hit', { visitorId });
       } catch (err) {
         console.error("Traffic log failed", err);
@@ -191,10 +202,9 @@ function App() {
     logTrafficHit();
   }, []);
 
-  // ✨ Web Push Subscription Logic
+  // Web Push Subscription Logic
   useEffect(() => {
     const subscribeToWebPush = async () => {
-      // Run only if logged in and browser supports Service Workers
       if (isAuthenticated && 'serviceWorker' in navigator && 'PushManager' in window) {
         try {
           const registration = await navigator.serviceWorker.ready;
@@ -202,7 +212,6 @@ function App() {
           const existingSubscription = await registration.pushManager.getSubscription();
           if (existingSubscription) return;
 
-          // Ensure permissions are granted before subscribing
           const permission = await Notification.requestPermission();
           if (permission !== 'granted') return;
 

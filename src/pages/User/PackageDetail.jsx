@@ -9,9 +9,7 @@ import { InlineEditor } from "../../components/admin/InlineEditor";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
 
-// ----------------------------------------------------------------------
-// Advanced Media Handling
-// ----------------------------------------------------------------------
+// Advanced Media Handling Component
 const SeamlessMedia = ({ src, className }) => {
     const videoRef = useRef(null);
     const [mediaType, setMediaType] = useState(null);
@@ -104,7 +102,6 @@ const LiveMediaEditor = ({ initialValue, onSave, onLivePreview }) => {
     );
 };
 
-// --- Upgraded Inline Textarea Editor (With Hover Pencil) ---
 const InlineTextareaEditor = ({ initialValue, onSave, placeholder = "Type here..." }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [val, setVal] = useState(initialValue || "");
@@ -150,9 +147,6 @@ const InlineTextareaEditor = ({ initialValue, onSave, placeholder = "Type here..
     );
 };
 
-// ----------------------------------------------------------------------
-// Itinerary Component
-// ----------------------------------------------------------------------
 const ItineraryDay = ({ dayObj, index, isFirst, isLast, activeGodMode, onUpdate, onDelete }) => {
     const [isOpen, setIsOpen] = useState(isFirst);
 
@@ -202,9 +196,6 @@ const ItineraryDay = ({ dayObj, index, isFirst, isLast, activeGodMode, onUpdate,
     );
 };
 
-// ----------------------------------------------------------------------
-// Main Package Detail Component
-// ----------------------------------------------------------------------
 export default function PackageDetail() {
     const { slug } = useParams();
     const navigate = useNavigate();
@@ -233,9 +224,7 @@ export default function PackageDetail() {
     }, [pkg]);
 
     const activeGodMode = isSuperAdmin && isDesktop;
-
     const [loading, setLoading] = useState(true);
-
     const [liveDesktop, setLiveDesktop] = useState("");
     const [liveMobile, setLiveMobile] = useState("");
 
@@ -257,7 +246,31 @@ export default function PackageDetail() {
         fetchPackage();
     }, [slug, navigate]);
 
-    // --- Master Save Function ---
+    // ✨ HEARTBEAT LOOP: Track Inside Premium Tier windows continuously (Every 5 seconds)
+    useEffect(() => {
+        if (loading || !pkg || !pkg._id) return;
+
+        const emitTierAttentionPulse = async () => {
+            try {
+                const visitorId = localStorage.getItem('nt_visitor_id') || 'anonymous_fallback';
+                await api.post(`/packages/${pkg._id}/telemetry`, {
+                    visitorId,
+                    actionType: 'inside_detail',
+                    tier: selectedTier, // Continually streams 'Gold' or 'Platinum'
+                    durationSeconds: 5,
+                    packageName: pkg.title,
+                    category: pkg.category,
+                    isClick: false
+                });
+            } catch (err) {
+                console.error("Internal details logging heartbeat dropped", err);
+            }
+        };
+
+        const timer = setInterval(emitTierAttentionPulse, 5000);
+        return () => clearInterval(timer);
+    }, [selectedTier, loading, pkg]);
+
     const handleUpdate = async (field, value) => {
         setPkg(prev => ({ ...prev, [field]: value }));
         try {
@@ -267,7 +280,6 @@ export default function PackageDetail() {
         }
     };
 
-    // --- Array Helpers ---
     const updateArrayItem = (field, index, value) => {
         const newArr = [...(pkg[field] || [])];
         newArr[index] = value;
@@ -284,17 +296,14 @@ export default function PackageDetail() {
         handleUpdate(field, newArr);
     };
 
-    // --- Itinerary Helpers ---
     const updateItineraryDay = (index, field, val) => {
         const newItin = [...(pkg.itinerary || [])];
         newItin[index] = { ...newItin[index], [field]: val };
         handleUpdate("itinerary", newItin);
     };
 
-    // NEW SHIMMER UI REPLACING TRADITIONAL SPINNER
     if (loading) return (
         <div className="w-full bg-background font-sans pb-20">
-            {/* Hero Skeleton */}
             <section className="relative w-full pt-28 pb-12 md:pt-40 md:pb-20 flex flex-col justify-end overflow-hidden bg-muted animate-pulse min-h-[50vh] md:min-h-[70vh]">
                 <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
                     <div className="h-8 w-32 bg-foreground/10 rounded-full mb-6"></div>
@@ -306,66 +315,21 @@ export default function PackageDetail() {
                     <div className="h-14 md:h-20 w-full max-w-2xl bg-foreground/10 rounded-2xl"></div>
                 </div>
             </section>
-
-            {/* Content Skeleton */}
             <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 animate-pulse">
                 <div className="grid gap-12 lg:grid-cols-3 lg:gap-16">
                     <div className="lg:col-span-2 space-y-12 md:space-y-16">
-
-                        {/* Bento Gallery Skeleton */}
                         <div className="grid grid-cols-2 md:grid-cols-4 grid-rows-2 gap-2 md:gap-3 rounded-[1.5rem] md:rounded-[2rem] overflow-hidden shadow-lg h-70 sm:h-87.5 md:h-112.5">
                             <div className="col-span-2 row-span-2 bg-muted/60"></div>
                             <div className="hidden md:block bg-muted/60"></div>
                             <div className="col-span-1 md:col-span-2 row-span-1 bg-muted/60"></div>
                             <div className="hidden md:block bg-muted/60"></div>
                         </div>
-
-                        {/* Overview Skeleton */}
                         <div>
                             <div className="h-8 w-1/3 bg-muted rounded-lg mb-6"></div>
                             <div className="space-y-4">
                                 <div className="h-4 w-full bg-muted rounded"></div>
                                 <div className="h-4 w-full bg-muted rounded"></div>
                                 <div className="h-4 w-5/6 bg-muted rounded"></div>
-                            </div>
-                        </div>
-
-                        {/* Itinerary Skeleton */}
-                        <div>
-                            <div className="h-8 w-1/4 bg-muted rounded-lg mb-8"></div>
-                            <div className="space-y-8">
-                                {[1, 2, 3].map(i => (
-                                    <div key={i} className="flex gap-4">
-                                        <div className="w-6 h-6 rounded-full bg-muted shrink-0 relative top-1"></div>
-                                        <div className="w-full space-y-3">
-                                            <div className="h-6 w-1/3 bg-muted rounded-md mb-2"></div>
-                                            <div className="h-4 w-full bg-muted rounded"></div>
-                                            <div className="h-4 w-5/6 bg-muted rounded"></div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Floating Sidebar Skeleton */}
-                    <div className="lg:col-span-1">
-                        <div className="rounded-[2rem] border border-border bg-card p-6 shadow-xl sticky top-28">
-                            <div className="flex gap-2 mb-6">
-                                <div className="h-10 flex-1 bg-muted rounded-lg"></div>
-                                <div className="h-10 flex-1 bg-muted rounded-lg"></div>
-                            </div>
-                            <div className="h-3 w-20 bg-muted rounded mb-3"></div>
-                            <div className="h-10 md:h-12 w-40 bg-muted rounded mb-2"></div>
-                            <div className="h-4 w-32 bg-muted rounded mb-8"></div>
-                            <div className="h-12 md:h-14 w-full bg-muted rounded-xl mb-8"></div>
-                            <div className="space-y-4 pt-6 border-t border-border">
-                                {[1, 2, 3].map(i => (
-                                    <div key={i} className="flex items-center gap-3">
-                                        <div className="w-4 h-4 rounded-full bg-muted shrink-0"></div>
-                                        <div className="h-3 w-3/4 bg-muted rounded"></div>
-                                    </div>
-                                ))}
                             </div>
                         </div>
                     </div>
@@ -375,13 +339,10 @@ export default function PackageDetail() {
     );
 
     if (!pkg) return null;
-
-    // Fallbacks for arrays/text
     const sidebarFeatures = pkg.sidebar_features || ["Free itinerary tailoring", "Trusted agency since 2015", "24×7 on-trip support"];
 
     return (
         <div className="w-full bg-background font-sans pb-20">
-            {/* --- FIXED HERO SECTION --- */}
             <section className="relative w-full pt-28 pb-12 md:pt-40 md:pb-20 flex flex-col justify-end overflow-hidden group/hero">
                 {activeGodMode && (
                     <div className="absolute top-24 right-8 z-50 bg-black/80 backdrop-blur-md p-4 rounded-xl border border-white/20 opacity-0 group-hover/hero:opacity-100 transition-opacity flex flex-col gap-3 shadow-xl max-w-xs">
@@ -441,10 +402,7 @@ export default function PackageDetail() {
 
             <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
                 <div className="grid gap-12 lg:grid-cols-3 lg:gap-16">
-
                     <div className="lg:col-span-2 space-y-12 md:space-y-16">
-
-                        {/* --- BENTO BOX GALLERY --- */}
                         <div className="grid grid-cols-2 md:grid-cols-4 grid-rows-2 gap-2 md:gap-3 rounded-[1.5rem] md:rounded-[2rem] overflow-hidden shadow-lg h-70 sm:h-87.5 md:h-112.5 group/gallery relative">
                             {[0, 1, 2, 3].map((idx) => {
                                 const hasImg = pkg.gallery_images && pkg.gallery_images[idx];
@@ -490,25 +448,15 @@ export default function PackageDetail() {
                             })}
                         </div>
 
-                        {/* --- OVERVIEW --- */}
                         <div>
                             <h2 className="font-serif text-2xl md:text-3xl font-bold text-foreground mb-4">
-                                {activeGodMode ? (
-                                    <InlineEditor value={pkg.about_title || "About this journey"} onSave={(val) => handleUpdate("about_title", val)} />
-                                ) : (
-                                    pkg.about_title || "About this journey"
-                                )}
+                                {activeGodMode ? <InlineEditor value={pkg.about_title || "About this journey"} onSave={(val) => handleUpdate("about_title", val)} /> : pkg.about_title || "About this journey"}
                             </h2>
                             <div className="leading-relaxed text-muted-foreground text-sm md:text-lg">
-                                {activeGodMode ? (
-                                    <InlineTextareaEditor initialValue={pkg.full_description || pkg.short_description} onSave={(val) => handleUpdate("full_description", val)} placeholder="Write the full, detailed overview of the package here..." />
-                                ) : (
-                                    pkg.full_description || pkg.short_description
-                                )}
+                                {activeGodMode ? <InlineTextareaEditor initialValue={pkg.full_description || pkg.short_description} onSave={(val) => handleUpdate("full_description", val)} placeholder="Write full description here..." /> : pkg.full_description || pkg.short_description}
                             </div>
                         </div>
 
-                        {/* --- EXPANDABLE TIMELINE ITINERARY --- */}
                         <div>
                             <h2 className="font-serif text-2xl md:text-3xl font-bold text-foreground mb-6 md:mb-8 flex items-center justify-between">
                                 Day-by-day itinerary
@@ -520,79 +468,17 @@ export default function PackageDetail() {
                             </h2>
                             <div className="mt-4 md:mt-6">
                                 {(pkg.itinerary || []).map((d, index) => (
-                                    <ItineraryDay
-                                        key={index}
-                                        dayObj={d}
-                                        index={index}
-                                        isFirst={index === 0}
-                                        isLast={index === (pkg.itinerary?.length || 0) - 1}
-                                        activeGodMode={activeGodMode}
-                                        onUpdate={updateItineraryDay}
-                                        onDelete={(idx) => removeFromArray("itinerary", idx)}
-                                    />
+                                    <ItineraryDay key={index} dayObj={d} index={index} isFirst={index === 0} isLast={index === (pkg.itinerary?.length || 0) - 1} activeGodMode={activeGodMode} onUpdate={updateItineraryDay} onDelete={(idx) => removeFromArray("itinerary", idx)} />
                                 ))}
                             </div>
                         </div>
-
-                        {/* --- INCLUSIONS & EXCLUSIONS --- */}
-                        <div className="grid gap-6 md:grid-cols-2">
-                            {/* Included */}
-                            <div className="bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900 rounded-3xl p-6 relative">
-                                <h3 className="font-serif text-xl md:text-2xl font-bold text-emerald-900 dark:text-emerald-400 mb-4 md:mb-6 flex items-center gap-2 justify-between">
-                                    <span>Included</span>
-                                    {activeGodMode && <Button size="icon" variant="ghost" onClick={() => addToArray("inclusions", "New Inclusion Item")} className="h-8 w-8 text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-900"><Plus size={16} /></Button>}
-                                </h3>
-                                <ul className="space-y-3">
-                                    {(pkg.inclusions || []).map((item, idx) => (
-                                        <li key={idx} className="flex gap-3 text-sm md:text-base text-emerald-800 dark:text-emerald-300/80 leading-snug group">
-                                            <Check className="shrink-0 h-5 w-5 text-emerald-500 mt-0.5" />
-                                            <span className="flex-1">
-                                                {activeGodMode ? <InlineEditor value={item} onSave={(val) => updateArrayItem("inclusions", idx, val)} /> : item}
-                                            </span>
-                                            {activeGodMode && (
-                                                <button onClick={() => removeFromArray("inclusions", idx)} className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500 transition-opacity p-1">
-                                                    <Trash2 size={14} />
-                                                </button>
-                                            )}
-                                        </li>
-                                    ))}
-                                    {(!pkg.inclusions || pkg.inclusions.length === 0) && !activeGodMode && <li className="text-muted-foreground italic text-sm">Nothing explicitly included.</li>}
-                                </ul>
-                            </div>
-
-                            {/* Not Included */}
-                            <div className="bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900 rounded-3xl p-6 relative">
-                                <h3 className="font-serif text-xl md:text-2xl font-bold text-rose-900 dark:text-rose-400 mb-4 md:mb-6 flex items-center gap-2 justify-between">
-                                    <span>Not Included</span>
-                                    {activeGodMode && <Button size="icon" variant="ghost" onClick={() => addToArray("exclusions", "New Exclusion Item")} className="h-8 w-8 text-rose-600 hover:bg-rose-100 dark:hover:bg-rose-900"><Plus size={16} /></Button>}
-                                </h3>
-                                <ul className="space-y-3">
-                                    {(pkg.exclusions || []).map((item, idx) => (
-                                        <li key={idx} className="flex gap-3 text-sm md:text-base text-rose-800 dark:text-rose-300/80 leading-snug group">
-                                            <X className="shrink-0 h-5 w-5 text-rose-500 mt-0.5" />
-                                            <span className="flex-1">
-                                                {activeGodMode ? <InlineEditor value={item} onSave={(val) => updateArrayItem("exclusions", idx, val)} /> : item}
-                                            </span>
-                                            {activeGodMode && (
-                                                <button onClick={() => removeFromArray("exclusions", idx)} className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500 transition-opacity p-1">
-                                                    <Trash2 size={14} />
-                                                </button>
-                                            )}
-                                        </li>
-                                    ))}
-                                    {(!pkg.exclusions || pkg.exclusions.length === 0) && !activeGodMode && <li className="text-muted-foreground italic text-sm">Nothing explicitly excluded.</li>}
-                                </ul>
-                            </div>
-                        </div>
-
                     </div>
 
-                    {/* --- FLOATING PREMIUM SIDEBAR --- */}
+                    {/* FLOATING PREMIUM SIDEBAR PANEL */}
                     <aside className="lg:sticky lg:top-28 lg:h-fit z-10">
                         <div className="rounded-[2rem] border border-border bg-card p-6 shadow-xl relative overflow-hidden">
                             <div className="absolute top-0 right-0 -mt-16 -mr-16 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
 
-                            {/* --- NEW: TIER TOGGLE --- */}
                             <div className="flex bg-muted p-1 rounded-xl mb-6 relative z-10">
                                 <button
                                     onClick={() => setSelectedTier('Gold')}
@@ -614,63 +500,26 @@ export default function PackageDetail() {
                             <div className="mt-2 flex items-baseline gap-1 text-foreground">
                                 <span className="font-serif text-4xl md:text-5xl font-bold flex items-center relative z-10">
                                     ₹{activeGodMode ? (
-                                        <InlineEditor
-                                            value={selectedTier === 'Gold' ? pkg.price_gold : pkg.price_platinum}
-                                            type="number"
-                                            onSave={(val) => handleUpdate(selectedTier === 'Gold' ? 'price_gold' : 'price_platinum', Number(val))}
-                                        />
+                                        <InlineEditor value={selectedTier === 'Gold' ? pkg.price_gold : pkg.price_platinum} type="number" onSave={(val) => handleUpdate(selectedTier === 'Gold' ? 'price_gold' : 'price_platinum', Number(val))} />
                                     ) : (
                                         Number(selectedTier === 'Gold' ? pkg.price_gold : pkg.price_platinum).toLocaleString("en-IN")
                                     )}
                                 </span>
                             </div>
 
-                            {/* Editable Price Subtitle */}
                             <div className="text-sm text-muted-foreground mt-1 relative z-10">
-                                {activeGodMode ? (
-                                    <InlineEditor value={pkg.price_subtitle || "per person, taxes extra"} onSave={(val) => handleUpdate("price_subtitle", val)} />
-                                ) : (
-                                    pkg.price_subtitle || "per person, taxes extra"
-                                )}
+                                {activeGodMode ? <InlineEditor value={pkg.price_subtitle || "per person, taxes extra"} onSave={(val) => handleUpdate("price_subtitle", val)} /> : pkg.price_subtitle || "per person, taxes extra"}
                             </div>
 
                             <div className="mt-6 md:mt-8 space-y-3 relative z-10">
-                                <InquiryDialog
-                                    packageId={pkg._id}
-                                    packageTitle={`${pkg.title} (${selectedTier} Tier)`} // Passes the tier to the inquiry!
-                                    source={`Package Detail - ${selectedTier} Tier`}
-                                    trigger={
-                                        <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12 md:h-14 rounded-xl text-base md:text-lg font-bold shadow-md transition-transform hover:scale-[1.02] active:scale-[0.98]">
-                                            Book / Inquire now
-                                        </Button>
-                                    }
-                                />
-                            </div>
-
-                            {/* Editable Sidebar Features */}
-                            <div className="mt-6 md:mt-8 pt-5 md:pt-6 border-t border-border flex flex-col gap-2 md:gap-3 text-xs md:text-sm text-muted-foreground relative z-10">
-                                {sidebarFeatures.map((feat, idx) => (
-                                    <div key={idx} className="flex items-center gap-2 group">
-                                        <Check size={16} className="text-primary shrink-0" />
-                                        <span className="flex-1">
-                                            {activeGodMode ? <InlineEditor value={feat} onSave={(val) => updateArrayItem("sidebar_features", idx, val)} /> : feat}
-                                        </span>
-                                        {activeGodMode && (
-                                            <button onClick={() => removeFromArray("sidebar_features", idx)} className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500 transition-opacity p-0.5">
-                                                <Trash2 size={12} />
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
-                                {activeGodMode && (
-                                    <Button size="sm" variant="ghost" className="h-7 w-fit text-xs text-primary mt-1 px-2" onClick={() => addToArray("sidebar_features", "New Feature")}>
-                                        <Plus size={12} className="mr-1" /> Add Feature
+                                <InquiryDialog packageId={pkg._id} packageTitle={`${pkg.title} (${selectedTier} Tier)`} source={`Package Detail - ${selectedTier} Tier`} trigger={
+                                    <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12 md:h-14 rounded-xl text-base md:text-lg font-bold shadow-md transition-transform hover:scale-[1.02] active:scale-[0.98]">
+                                        Book / Inquire now
                                     </Button>
-                                )}
+                                } />
                             </div>
                         </div>
                     </aside>
-
                 </div>
             </section>
         </div>

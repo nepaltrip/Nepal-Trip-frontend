@@ -7,8 +7,19 @@ export function NotificationPanel({ isOpen, onClose, newNotification }) {
 
     const fetchNotifications = async () => {
         try {
+            // 1. Fetch current notifications to show in the UI
             const { data } = await api.get('/notifications');
             setNotifications(data);
+
+            // 2. ✨ NEW: Check if there are any unread ones
+            const hasUnread = data.some(n => !n.isRead);
+            if (hasUnread) {
+                // Background update to mark all as read in the database
+                await api.put('/notifications/mark-all-read');
+
+                // Update local UI state immediately so they don't have to reopen to see them marked as read
+                setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+            }
         } catch (error) {
             console.error("Failed to load notifications");
         }

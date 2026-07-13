@@ -56,7 +56,7 @@ export function Navbar({ brand = "Nepal Trip" }) {
             // Listen for global push alerts
             socket.on('new_notification', (notificationObject) => {
                 setUnreadIndicator(true);
-                setLatestNotification(notificationObject); // ✨ Save the incoming object
+                setLatestNotification(notificationObject); // Save the incoming object
                 toast.info(`🔔 ${notificationObject.title}`);
             });
         }
@@ -65,7 +65,24 @@ export function Navbar({ brand = "Nepal Trip" }) {
         };
     }, [isAuthenticated, user]);
 
-    // Clear unread indicator when panel opens
+    // ✨ 2. INITIAL UNREAD CHECK (Keeps red dot on page refresh)
+    useEffect(() => {
+        if (isAuthenticated && user) {
+            const checkUnreadStatus = async () => {
+                try {
+                    const { data } = await api.get('/notifications/unread-count');
+                    if (data.count > 0) {
+                        setUnreadIndicator(true);
+                    }
+                } catch (error) {
+                    console.error("Failed to fetch unread notification count");
+                }
+            };
+            checkUnreadStatus();
+        }
+    }, [isAuthenticated, user]);
+
+    // ✨ 3. Clear unread indicator when panel opens
     useEffect(() => {
         if (isNotificationOpen) setUnreadIndicator(false);
     }, [isNotificationOpen]);

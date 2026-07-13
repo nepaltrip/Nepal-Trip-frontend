@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function CustomSelect({
     name,
@@ -77,7 +78,6 @@ export default function CustomSelect({
             scrollbar: "scrollbar-thumb-primary/50"
         },
         emerald: {
-            // Made the trigger ultra-compact to fit your newly sized God Mode boxes
             trigger: "bg-black/60 border-white/20 hover:border-emerald-500/50 text-white text-[10px] md:text-xs h-7 md:h-8 px-2",
             triggerActive: "border-emerald-500 ring-1 ring-emerald-500/50",
             dropdown: "bg-[#1a1a1a] border-white/20 shadow-2xl",
@@ -91,10 +91,10 @@ export default function CustomSelect({
 
     const activeTheme = themeConfig[theme] || themeConfig.orange;
 
-    // Dynamic positioning classes based on viewport calculations
+    // Dynamic positioning classes based on viewport calculations (Removed Tailwind animations)
     const dropClass = dropDirection === 'up'
-        ? "bottom-[calc(100%+4px)] origin-bottom slide-in-from-bottom-2"
-        : "top-[calc(100%+4px)] origin-top slide-in-from-top-2";
+        ? "bottom-[calc(100%+4px)] origin-bottom"
+        : "top-[calc(100%+4px)] origin-top";
 
     return (
         <div className="relative w-full min-w-0" ref={containerRef}>
@@ -104,29 +104,39 @@ export default function CustomSelect({
                 ref={triggerRef}
                 onClick={handleToggle}
                 className={`w-full min-w-0 rounded-lg border flex items-center justify-between cursor-pointer transition-all duration-200 
-                ${isOpen ? activeTheme.triggerActive : activeTheme.trigger} 
+                ${activeTheme.trigger} 
+                ${isOpen ? activeTheme.triggerActive : ""} 
                 ${!currentValue && theme === 'orange' ? "text-muted-foreground" : ""}`}
             >
                 <span className="truncate pr-2 flex-1 text-left">{currentLabel || placeholder}</span>
                 <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${activeTheme.icon} ${isOpen ? "rotate-180" : ""}`} />
             </div>
 
-            {isOpen && (
-                <ul className={`absolute z-9999 w-full ${dropClass} border rounded-xl py-1 animate-in fade-in duration-200 max-h-32 overflow-y-auto ${activeTheme.dropdown} scrollbar-thin scrollbar-track-transparent ${activeTheme.scrollbar}`}>
-                    {parsedOptions.map((opt, idx) => (
-                        <li
-                            key={idx}
-                            onClick={() => handleSelect(opt.value)}
-                            className={`px-2 py-1.5 md:px-3 md:py-2 cursor-pointer transition-colors duration-150 truncate ${activeTheme.itemBase} ${currentValue === opt.value
-                                ? activeTheme.itemActive
-                                : activeTheme.itemHover
-                                }`}
-                        >
-                            {opt.label}
-                        </li>
-                    ))}
-                </ul>
-            )}
+            {/* ✨ Replaced raw <ul> with Framer Motion for a smooth, jerk-free transition */}
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.ul
+                        initial={{ opacity: 0, y: dropDirection === 'up' ? 10 : -10, scaleY: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scaleY: 1 }}
+                        exit={{ opacity: 0, y: dropDirection === 'up' ? 10 : -10, scaleY: 0.95 }}
+                        transition={{ duration: 0.15, ease: "easeOut" }}
+                        className={`absolute z-[9999] w-full ${dropClass} border rounded-xl py-1 max-h-32 overflow-y-auto ${activeTheme.dropdown} scrollbar-thin scrollbar-track-transparent ${activeTheme.scrollbar}`}
+                    >
+                        {parsedOptions.map((opt, idx) => (
+                            <li
+                                key={idx}
+                                onClick={() => handleSelect(opt.value)}
+                                className={`px-2 py-1.5 md:px-3 md:py-2 cursor-pointer transition-colors duration-150 truncate ${activeTheme.itemBase} ${currentValue === opt.value
+                                    ? activeTheme.itemActive
+                                    : activeTheme.itemHover
+                                    }`}
+                            >
+                                {opt.label}
+                            </li>
+                        ))}
+                    </motion.ul>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

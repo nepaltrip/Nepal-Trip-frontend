@@ -19,7 +19,7 @@ export function LoginModal({ trigger, open: controlledOpen, onOpenChange: setCon
     const isControlled = controlledOpen !== undefined && setControlledOpen !== undefined;
     const currentOpen = isControlled ? controlledOpen : internalOpen;
 
-    // ✨ Master Flow State: Toggles between 'auth' and 'forgot'
+    // Master Flow State: Toggles between 'auth' and 'forgot'
     const [activeFlow, setActiveFlow] = useState('auth');
 
     const [isLogin, setIsLogin] = useState(true);
@@ -94,7 +94,20 @@ export function LoginModal({ trigger, open: controlledOpen, onOpenChange: setCon
                 handleOpenChangeWrapper(false);
             }
         } catch (error) {
-            setErrors({ general: error.response?.data?.message || "An unexpected error occurred." });
+            // ✨ NEW: Handle Banned User during local Login/Signup
+            if (
+                error.response &&
+                error.response.status === 403 &&
+                error.response.data?.message?.toLowerCase().includes('banned')
+            ) {
+                toast.error("Your account has been banned !!", {
+                    position: "top-center",
+                    autoClose: false, // Forces user to manually close it
+                });
+                handleOpenChangeWrapper(false); // Close the modal
+            } else {
+                setErrors({ general: error.response?.data?.message || "An unexpected error occurred." });
+            }
         } finally {
             setLoading(false);
         }
@@ -109,8 +122,23 @@ export function LoginModal({ trigger, open: controlledOpen, onOpenChange: setCon
                 toast.success(data.message || "Welcome!");
                 handleOpenChangeWrapper(false);
             } catch (error) {
-                toast.error("Google sign-in failed. Please try again.");
-            } finally { setLoading(false); }
+                // ✨ NEW: Handle Banned User during Google SSO Login
+                if (
+                    error.response &&
+                    error.response.status === 403 &&
+                    error.response.data?.message?.toLowerCase().includes('banned')
+                ) {
+                    toast.error("Your account has been banned !!", {
+                        position: "top-center",
+                        autoClose: false,
+                    });
+                    handleOpenChangeWrapper(false); // Close the modal
+                } else {
+                    toast.error(error.response?.data?.message || "Google sign-in failed. Please try again.");
+                }
+            } finally {
+                setLoading(false);
+            }
         },
         onError: () => toast.error("Google login popup closed or failed.")
     });
@@ -121,7 +149,7 @@ export function LoginModal({ trigger, open: controlledOpen, onOpenChange: setCon
             <DialogContent className="fixed left-[50%] top-[50%] z-50 w-[calc(100%-2rem)] max-w-120 -translate-x-1/2 -translate-y-1/2 p-0 overflow-hidden rounded-3xl border border-border/50 bg-background shadow-2xl duration-300">
                 <div className="max-h-[calc(100dvh-2rem)] overflow-y-auto px-8 py-6 sm:px-10 sm:py-8 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-border/60 hover:[&::-webkit-scrollbar-thumb]:bg-border">
 
-                    {/* ✨ FLOW 1: AUTHENTICATION (LOGIN / SIGNUP) */}
+                    {/* FLOW 1: AUTHENTICATION (LOGIN / SIGNUP) */}
                     <div
                         className={`grid transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] transform-gpu ${activeFlow === 'auth'
                             ? "grid-rows-[1fr] opacity-100 translate-x-0 scale-100 pointer-events-auto"
@@ -218,7 +246,7 @@ export function LoginModal({ trigger, open: controlledOpen, onOpenChange: setCon
                         </div>
                     </div>
 
-                    {/* ✨ FLOW 2: FORGOT PASSWORD */}
+                    {/* FLOW 2: FORGOT PASSWORD */}
                     <div
                         className={`grid transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] transform-gpu ${activeFlow === 'forgot'
                             ? "grid-rows-[1fr] opacity-100 translate-x-0 scale-100 pointer-events-auto"

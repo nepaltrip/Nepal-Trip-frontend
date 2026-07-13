@@ -145,7 +145,7 @@ const LiveMediaEditor = ({ initialValue, onSave, onLivePreview }) => {
     );
 };
 
-// --- Inline Textarea Editor (With Tick/Cross) ---
+// --- Inline Textarea Editor ---
 const InlineTextareaEditor = ({ initialValue, onSave }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [val, setVal] = useState(initialValue);
@@ -190,7 +190,7 @@ const InlineTextareaEditor = ({ initialValue, onSave }) => {
 };
 
 // --- Continuous 3D Cylinder Card Component ---
-const CylinderCard = ({ pkg, index, activeIndex, dragX, navigate, isDragging, activeGodMode, deletingId, setDeletingId, confirmDelete, onUpdate }) => {
+const CylinderCard = ({ pkg, index, activeIndex, dragX, onNavigate, isDragging, activeGodMode, deletingId, setDeletingId, confirmDelete, onUpdate }) => {
     const PAGE_WIDTH = typeof window !== 'undefined' ? (window.innerWidth < 768 ? window.innerWidth : 800) : 400;
 
     const localX = useTransform(activeIndex, (latest) => (index - latest) * PAGE_WIDTH);
@@ -212,12 +212,11 @@ const CylinderCard = ({ pkg, index, activeIndex, dragX, navigate, isDragging, ac
             className="absolute inset-0 m-auto w-full h-full rounded-[1.5rem] md:rounded-[2rem] overflow-hidden shadow-2xl bg-black group"
             onClick={(e) => {
                 if (isDragging.current) { e.preventDefault(); return; }
-                navigate(`/packages/${pkg.slug}`);
+                onNavigate(pkg, false);
             }}
         >
             {activeGodMode && (
                 <>
-                    {/* Localized Delete Modal / Button */}
                     <AnimatePresence>
                         {deletingId === pkg._id ? (
                             <motion.div
@@ -300,7 +299,7 @@ const CylinderCard = ({ pkg, index, activeIndex, dragX, navigate, isDragging, ac
                         </div>
                     </div>
 
-                    <button onClick={(e) => { e.stopPropagation(); navigate(`/packages/${pkg.slug}`); }} className="cursor-pointer bg-[#FA6D16] hover:bg-[#E55B05] text-white px-5 py-2.5 md:px-8 md:py-3.5 rounded-xl md:rounded-2xl font-bold text-sm md:text-lg shadow-xl transition-transform active:scale-95 hover:scale-105">
+                    <button onClick={(e) => { e.stopPropagation(); onNavigate(pkg, true); }} className="cursor-pointer bg-[#FA6D16] hover:bg-[#E55B05] text-white px-5 py-2.5 md:px-8 md:py-3.5 rounded-xl md:rounded-2xl font-bold text-sm md:text-lg shadow-xl transition-transform active:scale-95 hover:scale-105">
                         View Details
                     </button>
                 </div>
@@ -310,7 +309,7 @@ const CylinderCard = ({ pkg, index, activeIndex, dragX, navigate, isDragging, ac
 };
 
 // --- Standard Grid Card Component ---
-const GridCard = ({ pkg, idx, navigate, activeGodMode, deletingId, setDeletingId, confirmDelete, onUpdate }) => {
+const GridCard = ({ pkg, idx, onNavigate, activeGodMode, deletingId, setDeletingId, confirmDelete, onUpdate, onHoverActive }) => {
     const [liveDesktop, setLiveDesktop] = useState(pkg.cover_image_desktop);
     const [liveMobile, setLiveMobile] = useState(pkg.cover_image_mobile);
 
@@ -320,7 +319,9 @@ const GridCard = ({ pkg, idx, navigate, activeGodMode, deletingId, setDeletingId
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.1 }}
-            onClick={() => navigate(`/packages/${pkg.slug}`)}
+            onClick={() => onNavigate(pkg, false)}
+            onMouseEnter={() => onHoverActive && onHoverActive(pkg)}
+            onMouseLeave={() => onHoverActive && onHoverActive(null)}
             className="cursor-pointer group bg-card border border-border/50 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col relative"
         >
             {activeGodMode && (
@@ -446,9 +447,10 @@ export default function Packages() {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [hasSwiped, setHasSwiped] = useState(false);
 
+    const [hoveredGridPkg, setHoveredGridPkg] = useState(null);
+
     const dynamicCategories = ["All", ...new Set(packages.map(p => p.category).filter(Boolean))];
 
-    // Localized Card Delete State
     const [deletingId, setDeletingId] = useState(null);
     const [isRestoring, setIsRestoring] = useState(false);
     const [showRestoreModal, setShowRestoreModal] = useState(false);
@@ -481,53 +483,8 @@ export default function Packages() {
         return () => clearTimeout(timer);
     }, []);
 
-    const handleInstantCreate = async () => {
-        try {
-            const { data } = await api.post('/packages');
-            setPackages([data, ...packages]);
-            toast.success("Package draft generated! Edit directly on the card.");
-        } catch (error) {
-            toast.error("Could not create package.");
-        }
-    };
-
-    const handleUpdatePackage = async (id, field, value) => {
-        setPackages(prev => prev.map(p => p._id === id ? { ...p, [field]: value } : p));
-        try {
-            await api.put(`/packages/${id}`, { [field]: value });
-        } catch (error) {
-            toast.error("Failed to save changes.");
-        }
-    };
-
-    const confirmDeletePackage = async (id) => {
-        try {
-            await api.delete(`/packages/${id}`);
-            setPackages(packages.filter(p => p._id !== id));
-            toast.success("Package permanently deleted.");
-            setDeletingId(null);
-        } catch (error) {
-            toast.error("Could not delete package.");
-        }
-    };
-
-    const handleRestoreDefaults = async () => {
-        setIsRestoring(true);
-        try {
-            await api.post('/packages/restore-defaults');
-            toast.success("Demo packages restored successfully!");
-            setShowRestoreModal(false);
-            setTimeout(() => window.location.reload(), 1000);
-        } catch (error) {
-            toast.error("Failed to restore defaults.");
-        } finally {
-            setIsRestoring(false);
-        }
-    };
-
     const filteredPackages = packages.filter(pkg => {
         const query = searchQuery.toLowerCase();
-
         const matchesSearch =
             pkg.title?.toLowerCase().includes(query) ||
             pkg.destination?.toLowerCase().includes(query) ||
@@ -540,6 +497,56 @@ export default function Packages() {
 
         return matchesSearch && matchesCategory && matchesTier;
     });
+
+    // ✨ HEARTBEAT LOOP: Track Outside attention windows continuously (Every 5 seconds)
+    useEffect(() => {
+        if (isLoading || filteredPackages.length === 0) return;
+
+        const emitAttentionPulse = async () => {
+            let activePkg = null;
+            if (viewMode === 'immersive') {
+                activePkg = filteredPackages[currentIndex];
+            } else if (viewMode === 'grid') {
+                activePkg = hoveredGridPkg;
+            }
+
+            if (!activePkg) return;
+
+            try {
+                const visitorId = localStorage.getItem('nt_visitor_id') || 'anonymous_fallback';
+                await api.post(`/packages/${activePkg._id}/telemetry`, {
+                    visitorId,
+                    actionType: 'outside_hover',
+                    tier: 'None',
+                    durationSeconds: 5,
+                    packageName: activePkg.title,
+                    category: activePkg.category,
+                    isClick: false
+                });
+            } catch (err) {
+                console.error("Failed executing background telemetry sync", err);
+            }
+        };
+
+        const interval = setInterval(emitAttentionPulse, 5000);
+        return () => clearInterval(interval);
+    }, [currentIndex, hoveredGridPkg, viewMode, isLoading, packages]);
+
+    // ✨ Click Analytics Trigger Integration
+    const trackAndNavigate = (pkg, explicitDetailsClick = false) => {
+        const visitorId = localStorage.getItem('nt_visitor_id') || 'anonymous_fallback';
+        api.post(`/packages/${pkg._id}/telemetry`, {
+            visitorId,
+            actionType: explicitDetailsClick ? 'inside_detail' : 'outside_hover',
+            tier: 'None',
+            durationSeconds: 0,
+            packageName: pkg.title,
+            category: pkg.category,
+            isClick: true
+        }).catch(err => console.error("Click log delivery failure", err));
+
+        navigate(`/packages/${pkg.slug}`);
+    };
 
     useEffect(() => {
         setCurrentIndex(0);
@@ -614,9 +621,52 @@ export default function Packages() {
         wheelTimeout.current = setTimeout(() => { wheelTimeout.current = null; }, 800);
     };
 
+    const handleInstantCreate = async () => {
+        try {
+            const { data } = await api.post('/packages');
+            setPackages([data, ...packages]);
+            toast.success("Package draft generated! Edit directly on the card.");
+        } catch (error) {
+            toast.error("Could not create package.");
+        }
+    };
+
+    const handleUpdatePackage = async (id, field, value) => {
+        setPackages(prev => prev.map(p => p._id === id ? { ...p, [field]: value } : p));
+        try {
+            await api.put(`/packages/${id}`, { [field]: value });
+        } catch (error) {
+            toast.error("Failed to save changes.");
+        }
+    };
+
+    const confirmDeletePackage = async (id) => {
+        try {
+            await api.delete(`/packages/${id}`);
+            setPackages(packages.filter(p => p._id !== id));
+            toast.success("Package permanently deleted.");
+            setDeletingId(null);
+        } catch (error) {
+            toast.error("Could not delete package.");
+        }
+    };
+
+    const handleRestoreDefaults = async () => {
+        setIsRestoring(true);
+        try {
+            await api.post('/packages/restore-defaults');
+            toast.success("Demo packages restored successfully!");
+            setShowRestoreModal(false);
+            setTimeout(() => window.location.reload(), 1000);
+        } catch (error) {
+            toast.error("Failed to restore defaults.");
+        } finally {
+            setIsRestoring(false);
+        }
+    };
+
     return (
         <div className={`w-full transition-all duration-1000 ease-out transform ${isMounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-
             <div className={`w-full bg-background min-h-[calc(100dvh-4rem)] flex flex-col pt-2 pb-6 md:pb-4 md:pt-6 font-sans relative animate-in fade-in duration-700 ${viewMode === 'immersive' ? 'overflow-hidden items-center' : ''}`}>
 
                 {viewMode === 'immersive' && (
@@ -745,7 +795,7 @@ export default function Packages() {
                                                 index={i}
                                                 activeIndex={activeIndex}
                                                 dragX={dragX}
-                                                navigate={navigate}
+                                                onNavigate={trackAndNavigate}
                                                 isDragging={isDragging}
                                                 activeGodMode={activeGodMode}
                                                 deletingId={deletingId}
@@ -787,12 +837,13 @@ export default function Packages() {
                                             key={pkg._id}
                                             pkg={pkg}
                                             idx={idx}
-                                            navigate={navigate}
+                                            onNavigate={trackAndNavigate}
                                             activeGodMode={activeGodMode}
                                             deletingId={deletingId}
                                             setDeletingId={setDeletingId}
                                             confirmDelete={confirmDeletePackage}
                                             onUpdate={handleUpdatePackage}
+                                            onHoverActive={setHoveredGridPkg}
                                         />
                                     ))}
                                 </div>
