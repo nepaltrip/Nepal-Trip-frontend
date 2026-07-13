@@ -48,7 +48,9 @@ export function Navbar({ brand = "Nepal Trip" }) {
     useEffect(() => {
         let socket;
         if (isAuthenticated && user) {
-            socket = io(import.meta.env.VITE_API_URL);
+            // FIX: Strip '/api' so Socket.IO connects to the default root namespace ('/')
+            const baseUrl = import.meta.env.VITE_API_URL.replace('/api', '');
+            socket = io(baseUrl, { withCredentials: true });
 
             // Register user identity and role to join correct rooms
             socket.emit('register', { id: user.id || user._id, role: user.role });
