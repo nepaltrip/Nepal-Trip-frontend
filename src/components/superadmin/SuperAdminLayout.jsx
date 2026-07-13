@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { LayoutDashboard, MessageSquare, LogOut, Menu, X, Settings, Shield, Compass, Users } from "lucide-react";
@@ -27,24 +27,29 @@ export function SuperAdminLayout() {
         return () => clearTimeout(timer);
     }, []);
 
+    // ✨ EXTRACTED FETCH FUNCTION SO WE CAN PASS IT TO CHILDREN
+    const fetchBaseline = useCallback(async () => {
+        try {
+            const { data } = await api.get('/superadmin/dashboard-counters');
+            setMetrics(prev => ({
+                ...prev,
+                uniqueVisitors: data.uniqueVisitors !== undefined ? data.uniqueVisitors : prev.uniqueVisitors,
+                totalInquiries: data.totalInquiries !== undefined ? data.totalInquiries : prev.totalInquiries,
+                pendingReplies: data.pendingReplies || 0,
+                recentInquiries: data.recentInquiries || []
+            }));
+        } catch (error) {
+            console.error("Layout failed to fetch baseline metrics", error);
+        }
+    }, []);
+
+    // Fetch on initial load
+    useEffect(() => {
+        fetchBaseline();
+    }, [fetchBaseline]);
+
     // ✨ THE MASTER SOCKET CONNECTION
     useEffect(() => {
-        const fetchBaseline = async () => {
-            try {
-                const { data } = await api.get('/superadmin/dashboard-counters');
-                setMetrics({
-                    uniqueVisitors: data.uniqueVisitors || 0,
-                    totalInquiries: data.totalInquiries || 0,
-                    pendingReplies: data.pendingReplies || 0,
-                    recentInquiries: data.recentInquiries || []
-                });
-            } catch (error) {
-                console.error("Layout failed to fetch baseline metrics", error);
-            }
-        };
-
-        fetchBaseline();
-
         let socket;
         if (isAuthenticated && user) {
             const baseUrl = import.meta.env.VITE_API_URL.replace('/api', '');
@@ -59,7 +64,8 @@ export function SuperAdminLayout() {
                 if (payload.action === 'live_visitor_update') {
                     setMetrics(prev => ({ ...prev, uniqueVisitors: payload.count }));
                 } else {
-                    fetchBaseline(); // Refetch for complex inquiry updates
+                    // Refetch for complex inquiry updates (like when someone else replies)
+                    fetchBaseline();
                 }
             });
 
@@ -69,7 +75,7 @@ export function SuperAdminLayout() {
         return () => {
             if (socket) socket.disconnect();
         };
-    }, [isAuthenticated, user]);
+    }, [isAuthenticated, user, fetchBaseline]);
 
     const superAdminLinks = [
         { label: "Dashboard", to: "/superadmin", icon: LayoutDashboard },
@@ -201,8 +207,8 @@ export function SuperAdminLayout() {
                             transition={{ duration: 0.3, ease: "easeInOut" }}
                             className="p-4 md:p-8 min-h-full"
                         >
-                            {/* ✨ PASSING THE LIVE DATA TO CHILDREN */}
-                            <Outlet context={{ metrics, socketInstance }} />
+                            {/* ✨ PASSING refreshMetrics DOWN TO CHILDREN */}
+                            <Outlet context={{ metrics, socketInstance, refreshMetrics: fetchBaseline }} />
                         </motion.div>
                     </AnimatePresence>
                 </main>

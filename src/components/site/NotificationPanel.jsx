@@ -1,23 +1,22 @@
 import React, { useState, useEffect } from "react";
-import { X, Bell, Trash2, CheckCircle2 } from "lucide-react";
+import { X, Bell, Trash2, CheckCircle2, MessageSquareText } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import api from "../../api/axios";
 
 export function NotificationPanel({ isOpen, onClose, newNotification }) {
     const [notifications, setNotifications] = useState([]);
+    const navigate = useNavigate();
+    const { user } = useSelector(state => state.auth); // ✨ Get user role for routing
 
     const fetchNotifications = async () => {
         try {
-            // 1. Fetch current notifications to show in the UI
             const { data } = await api.get('/notifications');
             setNotifications(data);
 
-            // 2. ✨ NEW: Check if there are any unread ones
             const hasUnread = data.some(n => !n.isRead);
             if (hasUnread) {
-                // Background update to mark all as read in the database
                 await api.put('/notifications/mark-all-read');
-
-                // Update local UI state immediately so they don't have to reopen to see them marked as read
                 setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
             }
         } catch (error) {
@@ -26,14 +25,11 @@ export function NotificationPanel({ isOpen, onClose, newNotification }) {
     };
 
     useEffect(() => {
-        if (isOpen) {
-            fetchNotifications();
-        }
+        if (isOpen) fetchNotifications();
     }, [isOpen]);
 
     useEffect(() => {
         if (newNotification) {
-            // Check to prevent duplicates just in case
             setNotifications(prev => {
                 const exists = prev.find(n => n._id === newNotification._id);
                 if (exists) return prev;
@@ -56,6 +52,23 @@ export function NotificationPanel({ isOpen, onClose, newNotification }) {
     const clearAll = async () => {
         setNotifications([]);
         await api.delete(`/notifications/clear/all`);
+    };
+
+    // ✨ NEW: Deep Linking Click Handler
+    const handleNotificationClick = (n) => {
+        if (!n.isRead) markAsRead(n._id);
+
+        onClose(); // Close the panel
+
+        // Navigate based on role if an inquiryId exists
+        if (n.inquiryId) {
+            if (user?.role === 'SuperAdmin') {
+                navigate(`/superadmin/inquiries?id=${n.inquiryId}`);
+            } else if (user?.role === 'Admin') {
+                navigate(`/admin/inquiries?id=${n.inquiryId}`);
+            }
+            // If it's a standard user, you could navigate them to a user-profile inquiry page if you build one later!
+        }
     };
 
     return (
@@ -87,13 +100,30 @@ export function NotificationPanel({ isOpen, onClose, newNotification }) {
                         notifications.map((n) => (
                             <div
                                 key={n._id}
-                                onClick={() => !n.isRead && markAsRead(n._id)}
-                                className={`relative group p-4 rounded-xl border transition-all cursor-pointer ${n.isRead ? "bg-background border-border/40 opacity-75" : "bg-[#FA6D16]/5 border-[#FA6D16]/30 shadow-sm"}`}
+                                onClick={() => handleNotificationClick(n)}
+                                className={`relative group p-4 rounded-xl border transition-all cursor-pointer ${n.isRead ? "bg-background border-border/40 opacity-75 hover:bg-muted/50" : "bg-[#FA6D16]/5 border-[#FA6D16]/30 shadow-sm"}`}
                             >
                                 {!n.isRead && <span className="absolute top-4 left-2 h-2 w-2 rounded-full bg-[#FA6D16]" />}
                                 <div className="pl-3 pr-6">
                                     <h4 className="text-sm font-bold text-foreground mb-1">{n.title}</h4>
-                                    <p className="text-xs text-muted-foreground leading-relaxed">{n.message}</p>
+                                    <p className="text-xs text-muted-foreground leading-relaxed mb-2">{n.message}</p>
+
+                                    {/* ✨ NEW: Rich Context Rendering */}
+                                    {n.payload && (n.payload.inquiryText || n.payload.replyText) && (
+                                        <div className="mt-2 space-y-2 border-t border-border/40 pt-2">
+                                            {n.payload.inquiryText && (
+                                                <div className="bg-muted/50 p-2 rounded-lg border border-border/50 text-xs italic text-muted-foreground line-clamp-2">
+                                                    "{n.payload.inquiryText}"
+                                                </div>
+                                            )}
+                                            {n.payload.replyText && (
+                                                <div className="flex items-start gap-2 bg-emerald-50 p-2 rounded-lg border border-emerald-100 text-xs text-emerald-800">
+                                                    <MessageSquareText className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                                                    <span className="line-clamp-2">{n.payload.replyText}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                                 <button
                                     onClick={(e) => deleteNotification(e, n._id)}
@@ -105,7 +135,6 @@ export function NotificationPanel({ isOpen, onClose, newNotification }) {
                         ))
                     )}
                 </div>
-
             </div>
         </div>
     );

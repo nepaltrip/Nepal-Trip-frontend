@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "react-toastify";
 import { MapPin } from "lucide-react";
+import api from "../../api/axios";
 
 const schema = z.object({
     name: z.string().trim().min(2, "Name is required").max(100),
@@ -46,22 +47,16 @@ export function InquiryDialog({ packageId, packageTitle, source = "General", tri
         const { name, email, phone, travel_date, travelers, message } = parsed.data;
 
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/inquiries`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    package_id: packageId || null,
-                    source, // ✨ Sending the source tracker to backend
-                    name,
-                    email,
-                    phone: phone || null,
-                    travel_date: travel_date || null,
-                    travelers: travelers ? parseInt(travelers, 10) : null,
-                    message: message || null,
-                }),
+            const response = await api.post('/inquiries', {
+                package_id: packageId || null,
+                source,
+                name,
+                email,
+                phone: phone || null,
+                travel_date: travel_date || null,
+                travelers: travelers ? parseInt(travelers, 10) : null,
+                message: message || null,
             });
-
-            if (!response.ok) throw new Error("Server communication error");
 
             toast.success("Inquiry sent — we'll get back to you shortly!");
             handleOpenChangeWrapper(false);
@@ -71,7 +66,6 @@ export function InquiryDialog({ packageId, packageTitle, source = "General", tri
             setSubmitting(false);
         }
     }
-
     return (
         <Dialog open={currentOpen} onOpenChange={handleOpenChangeWrapper}>
             <DialogTrigger asChild>{trigger}</DialogTrigger>
