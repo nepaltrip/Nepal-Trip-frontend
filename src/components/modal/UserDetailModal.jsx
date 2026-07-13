@@ -11,6 +11,7 @@ export function UserDetailModal({ isOpen, onClose, userData, viewerRole = "admin
     const [isBanning, setIsBanning] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isBanDialogOpen, setIsBanDialogOpen] = useState(false); // ✨ NEW STATE
     const [displayUser, setDisplayUser] = useState(null);
 
     const [formData, setFormData] = useState({
@@ -54,6 +55,7 @@ export function UserDetailModal({ isOpen, onClose, userData, viewerRole = "admin
         fetchFreshProfile();
         setIsEditing(false);
         setIsDeleteDialogOpen(false);
+        setIsBanDialogOpen(false); // ✨ Reset on open
     }, [userData, isOpen, targetUserId]);
 
     useEffect(() => {
@@ -68,6 +70,7 @@ export function UserDetailModal({ isOpen, onClose, userData, viewerRole = "admin
         }
         setIsEditing(false);
         setIsDeleteDialogOpen(false);
+        setIsBanDialogOpen(false); // ✨ Reset on open
     }, [userData, isOpen]);
 
     useEffect(() => {
@@ -82,7 +85,6 @@ export function UserDetailModal({ isOpen, onClose, userData, viewerRole = "admin
     const safeViewerRole = viewerRole?.toLowerCase() || "admin";
     const isSuperAdmin = safeViewerRole === "superadmin";
     const canEdit = safeViewerRole === "admin" || isSuperAdmin;
-
 
     const handleInputChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
@@ -101,13 +103,17 @@ export function UserDetailModal({ isOpen, onClose, userData, viewerRole = "admin
         }
     };
 
-    const handleToggleBan = async () => {
+    // ✨ UPDATED: Now triggered from the confirmation dialog
+    const handleConfirmBanToggle = async () => {
         setIsBanning(true);
         const newStatus = isBanned ? 'active' : 'banned';
         try {
             const { data } = await api.patch(`/user/${targetUserId}/ban`, { status: newStatus });
             toast.success(data.message);
-            if (onSave) onSave({ ...displayUser, status: newStatus });
+            const updatedUser = { ...displayUser, status: newStatus };
+            setDisplayUser(updatedUser); // Update local state instantly
+            if (onSave) onSave(updatedUser); // Propagate to table
+            setIsBanDialogOpen(false); // Close dialog
         } catch (error) {
             toast.error(error.response?.data?.message || "Failed to change ban status.");
         } finally {
@@ -148,7 +154,10 @@ export function UserDetailModal({ isOpen, onClose, userData, viewerRole = "admin
                         {/* LEFT PANEL: IDENTITY & CRM CONTROL         */}
                         {/* ========================================== */}
                         <motion.div layout className={`w-full md:w-[35%] bg-white p-6 md:p-8 ${isEditing ? 'border-b-0' : 'border-b'} md:border-b-0 md:border-r border-border/40 flex flex-col items-center text-center relative min-h-125 transition-all duration-300 ease-in-out`}>
+
+                            {/* OVERLAYS FOR CONFIRMATION ACTIONS */}
                             <AnimatePresence>
+                                {/* DELETE DIALOG */}
                                 {isDeleteDialogOpen && (
                                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute inset-0 z-30 bg-white/95 backdrop-blur-sm p-6 flex flex-col items-center justify-center text-center md:rounded-l-3xl">
                                         <div className="h-14 w-14 rounded-full bg-red-100 flex items-center justify-center mb-4">
@@ -164,15 +173,35 @@ export function UserDetailModal({ isOpen, onClose, userData, viewerRole = "admin
                                         </div>
                                     </motion.div>
                                 )}
+
+                                {/* ✨ NEW BAN/REACTIVATE DIALOG */}
+                                {isBanDialogOpen && !isDeleteDialogOpen && (
+                                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute inset-0 z-30 bg-white/95 backdrop-blur-sm p-6 flex flex-col items-center justify-center text-center md:rounded-l-3xl">
+                                        <div className={`h-14 w-14 rounded-full flex items-center justify-center mb-4 ${isBanned ? 'bg-emerald-100' : 'bg-red-100'}`}>
+                                            {isBanned ? <CheckCircle2 className="h-7 w-7 text-emerald-600" /> : <Ban className="h-7 w-7 text-red-600" />}
+                                        </div>
+                                        <h3 className="text-xl font-bold text-slate-900 mb-2">
+                                            {isBanned ? 'Reactivate User?' : 'Ban User?'}
+                                        </h3>
+                                        <p className="text-sm text-slate-500 mb-6">
+                                            Do you want to <strong>{isBanned ? 'activate' : 'ban'}</strong> the account for {displayUser.name}?
+                                        </p>
+                                        <div className="w-full flex gap-3">
+                                            <button onClick={() => setIsBanDialogOpen(false)} disabled={isBanning} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-sm transition-colors disabled:opacity-50">Cancel</button>
+                                            <button onClick={handleConfirmBanToggle} disabled={isBanning} className={`flex-1 font-bold py-2.5 rounded-xl text-sm shadow-sm transition-colors disabled:opacity-50 text-white ${isBanned ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-600 hover:bg-red-700'}`}>
+                                                {isBanning ? "Processing..." : "Confirm"}
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                )}
                             </AnimatePresence>
 
-                            {canEdit && !isEditing && !isDeleteDialogOpen && (
+                            {canEdit && !isEditing && !isDeleteDialogOpen && !isBanDialogOpen && (
                                 <motion.button layout onClick={() => setIsEditing(true)} className="absolute top-4 left-4 inline-flex items-center gap-1.5 px-3 py-1.5 bg-muted/50 hover:bg-muted text-xs font-bold rounded-lg border border-border/40 transition-colors">
                                     <Edit2 className="h-3.5 w-3.5 text-[#2A5244]" /> Edit
                                 </motion.button>
                             )}
 
-                            {/* ✨ LIVE AVATAR WITH GREEN DOT */}
                             <motion.div layout className="relative mb-4 mt-4 md:mt-0 z-10">
                                 <div className={`h-24 w-24 rounded-full flex items-center justify-center text-3xl font-black text-white shadow-lg border-4 border-white ${isBanned ? 'bg-red-500' : 'bg-[#2A5244]'}`}>
                                     {displayUser.photo && displayUser.photo.length > 1 ? (
@@ -224,7 +253,11 @@ export function UserDetailModal({ isOpen, onClose, userData, viewerRole = "admin
                                         <motion.div key="view-content" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="w-full flex flex-col items-center mt-2 grow">
                                             <h2 className="text-xl font-bold font-serif text-foreground break-all">{formData.name}</h2>
 
+                                            {/* ✨ ADDED BANNED/ACTIVE TAG HERE */}
                                             <div className="flex flex-wrap gap-1.5 justify-center mt-2 mb-6">
+                                                <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border shadow-sm ${displayUser.status === 'banned' ? 'bg-red-100 text-red-600 border-red-200' : 'bg-emerald-50 text-emerald-600 border-emerald-200'}`}>
+                                                    {displayUser.status === 'banned' ? 'Banned' : 'Active'}
+                                                </span>
                                                 <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border shadow-sm ${displayUser.leadScore === 'Hot' ? 'bg-[#FA6D16] text-white border-[#FA6D16]' : displayUser.leadScore === 'Spam' ? 'bg-red-500 text-white border-red-600' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>
                                                     {displayUser.leadScore || "Standard"} Lead
                                                 </span>
@@ -238,15 +271,17 @@ export function UserDetailModal({ isOpen, onClose, userData, viewerRole = "admin
                                             </div>
 
                                             <div className="mt-auto pt-8 w-full border-t border-border/40 space-y-3">
+                                                {/* ✨ BUTTON NOW OPENS DIALOG INSTEAD OF FIRING INSTANTLY */}
                                                 {!isBanned ? (
-                                                    <button type="button" onClick={handleToggleBan} disabled={isBanning} className="w-full flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 font-bold py-2.5 rounded-xl transition-colors border border-red-200 shadow-sm active:scale-95 disabled:opacity-50">
-                                                        <Ban className="h-4 w-4" /> {isBanning ? "Banning..." : "Ban User"}
+                                                    <button type="button" onClick={() => setIsBanDialogOpen(true)} className="w-full flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 font-bold py-2.5 rounded-xl transition-colors border border-red-200 shadow-sm active:scale-95">
+                                                        <Ban className="h-4 w-4" /> Ban User
                                                     </button>
                                                 ) : (
-                                                    <button type="button" onClick={handleToggleBan} disabled={isBanning} className="w-full flex items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold py-2.5 rounded-xl transition-colors border border-emerald-200 shadow-sm active:scale-95">
-                                                        <CheckCircle2 className="h-4 w-4" /> {isBanning ? "Reactivating..." : "Reactivate User"}
+                                                    <button type="button" onClick={() => setIsBanDialogOpen(true)} className="w-full flex items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold py-2.5 rounded-xl transition-colors border border-emerald-200 shadow-sm active:scale-95">
+                                                        <CheckCircle2 className="h-4 w-4" /> Reactivate User
                                                     </button>
                                                 )}
+
                                                 {canEdit && (
                                                     <button type="button" onClick={() => setIsDeleteDialogOpen(true)} className="w-full flex items-center justify-center gap-2 bg-slate-50 hover:bg-red-50 text-slate-600 hover:text-red-600 font-bold py-2.5 rounded-xl transition-colors border border-slate-200 hover:border-red-200 shadow-sm active:scale-95">
                                                         <Trash2 className="h-4 w-4" /> Delete Account
@@ -272,7 +307,6 @@ export function UserDetailModal({ isOpen, onClose, userData, viewerRole = "admin
                                 <div className="grid grid-cols-2 gap-3 md:gap-4">
                                     <div className="col-span-2 bg-white p-4 rounded-2xl border border-border/40 shadow-sm">
                                         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Last Active</p>
-                                        {/* ✨ LIVE STATUS TEXT */}
                                         <p className={`text-sm font-bold mt-1.5 ${displayUser.isOnline ? 'text-emerald-600' : 'text-foreground'}`}>
                                             {displayUser.isOnline ? 'Online Now' : (displayUser.lastSeen || "N/A")}
                                         </p>
@@ -292,7 +326,7 @@ export function UserDetailModal({ isOpen, onClose, userData, viewerRole = "admin
                                 </div>
                             </div>
 
-                            {/* Section B: Current Package Intent (Only shows if modal opened from a specific package row) */}
+                            {/* Section B: Current Package Intent */}
                             {displayUser.sevenDayClicksOnThisPackage !== undefined && (
                                 <div className="pt-2 border-t border-border/40">
                                     <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
