@@ -458,9 +458,9 @@ export default function Home() {
                                 <h1 className="mt-6 font-serif text-4xl leading-tight sm:text-5xl lg:text-6xl text-white">
                                     {renderEditableText("heroTitle")}
                                 </h1>
-                                <p className="mt-5 max-w-xl text-base text-white/85 sm:text-lg leading-relaxed">
+                                <div className="mt-5 max-w-xl text-base text-white/85 sm:text-lg leading-relaxed">
                                     {renderEditableText("heroSubtitle", "textarea")}
-                                </p>
+                                </div>
                                 <div className="mt-8 flex flex-wrap gap-4">
                                     <InquiryDialog
                                         source="Home Hero Section"
@@ -510,9 +510,9 @@ export default function Home() {
                                     <h3 className="mt-4 font-serif text-xl text-foreground font-semibold">
                                         {isMobile ? card.title : <InlineEditor value={card.title} onSave={(val) => handleUpdateWhyUsCard(idx, "title", val)} />}
                                     </h3>
-                                    <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                                    <div className="mt-2 text-sm text-muted-foreground leading-relaxed">
                                         {isMobile ? card.body : <InlineEditor type="textarea" value={card.body} onSave={(val) => handleUpdateWhyUsCard(idx, "body", val)} />}
-                                    </p>
+                                    </div>
                                 </div>
                             ))}
                             {isSuperAdmin && !isMobile && (
@@ -531,9 +531,9 @@ export default function Home() {
                         {settings.galleryPreview.length > 0 && (
                             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                                 <div>
-                                    <p className="font-serif text-sm uppercase tracking-widest text-[#FA6D16] font-bold">
+                                    <div className="font-serif text-sm uppercase tracking-widest text-[#FA6D16] font-bold">
                                         {renderEditableText("galleryTagline")}
-                                    </p>
+                                    </div>
                                     <h2 className="mt-1 font-serif text-3xl sm:text-4xl font-bold text-foreground tracking-tight">
                                         {renderEditableText("galleryTitle")}
                                     </h2>
@@ -585,9 +585,9 @@ export default function Home() {
                         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                             <div className="flex justify-between items-end">
                                 <div>
-                                    <p className="font-serif text-sm uppercase tracking-widest text-[#FA6D16] font-bold">
+                                    <div className="font-serif text-sm uppercase tracking-widest text-[#FA6D16] font-bold">
                                         {renderEditableText("testimonialsTagline")}
-                                    </p>
+                                    </div>
                                     <h2 className="mt-1 font-serif text-3xl sm:text-4xl font-bold text-foreground tracking-tight">
                                         {renderEditableText("testimonialsTitle")}
                                     </h2>
@@ -612,9 +612,9 @@ export default function Home() {
                                                 <Star key={i} className="h-4 w-4 fill-current" />
                                             ))}
                                         </div>
-                                        <p className="mt-3 text-sm leading-relaxed text-foreground font-medium">
+                                        <div className="mt-3 text-sm leading-relaxed text-foreground font-medium">
                                             “{isMobile ? t.message : <InlineEditor type="textarea" value={t.message} onSave={(val) => handleUpdateTestimonial(t._id, "message", val)} />}”
-                                        </p>
+                                        </div>
                                         <footer className="mt-4 text-xs font-semibold flex items-center gap-1">
                                             <span className="text-foreground">
                                                 {isMobile ? t.name : <InlineEditor value={t.name} onSave={(val) => handleUpdateTestimonial(t._id, "name", val)} />}
@@ -663,11 +663,11 @@ export default function Home() {
                                             {renderEditableText("ctaTitle")}
                                         </div>
                                     </h2>
-                                    <p className="mt-4 text-base text-white/80 sm:text-lg leading-relaxed">
+                                    <div className="mt-4 text-base text-white/80 sm:text-lg leading-relaxed">
                                         <div className="bg-black/10 rounded p-1">
                                             {renderEditableText("ctaBody", "textarea")}
                                         </div>
-                                    </p>
+                                    </div>
                                 </div>
                                 <Link to="/discover" className="shrink-0">
                                     <Button size="lg" className="bg-[#FA6D16] hover:bg-[#E55B05] text-white font-bold rounded-xl h-14 text-base shadow-lg transition-transform active:scale-95 px-8">
