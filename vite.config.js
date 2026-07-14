@@ -15,7 +15,9 @@ export default defineConfig({
       srcDir: 'public',
       filename: 'sw.js',
       injectManifest: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        // ✨ FIXED: Added file size threshold to allow the 8.64 MB SuperAdmin bundle to cache
+        maximumFileSizeToCacheInBytes: 15 * 1024 * 1024, // 15 MB
       },
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
