@@ -177,8 +177,9 @@ export default function Contact() {
                             <div className="bg-card p-8 rounded-3xl border border-border/50 shadow-sm hover:shadow-md transition-shadow">
                                 <h3 className="font-serif text-2xl font-bold mb-6 text-foreground">Contact Details</h3>
                                 <div className="space-y-6">
-                                    <a href={`mailto:${settings.contact_email}`} className="flex gap-4 group">
-                                        <div className="p-3 bg-primary/10 text-primary rounded-xl group-hover:bg-primary group-hover:text-white transition-colors shadow-sm">
+
+                                    <a href={`mailto:${settings.contact_email}`} className="flex items-start gap-4 group">
+                                        <div className="p-3 shrink-0 bg-primary/10 text-primary rounded-xl group-hover:bg-primary group-hover:text-white transition-colors shadow-sm">
                                             <Mail className="h-5 w-5" />
                                         </div>
                                         <div>
@@ -186,8 +187,9 @@ export default function Contact() {
                                             <p className="text-foreground font-medium">{renderEditableText("contact_email")}</p>
                                         </div>
                                     </a>
-                                    <a href={`tel:${settings.contact_phone.replace(/[^0-9+]/g, '')}`} className="flex gap-4 group">
-                                        <div className="p-3 bg-primary/10 text-primary rounded-xl group-hover:bg-primary group-hover:text-white transition-colors shadow-sm">
+
+                                    <a href={`tel:${settings.contact_phone.replace(/[^0-9+]/g, '')}`} className="flex items-start gap-4 group">
+                                        <div className="p-3 shrink-0 bg-primary/10 text-primary rounded-xl group-hover:bg-primary group-hover:text-white transition-colors shadow-sm">
                                             <Phone className="h-5 w-5" />
                                         </div>
                                         <div>
@@ -195,8 +197,9 @@ export default function Contact() {
                                             <p className="text-foreground font-medium">{renderEditableText("contact_phone")}</p>
                                         </div>
                                     </a>
-                                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(settings.contact_address)}`} target="_blank" rel="noopener noreferrer" className="flex gap-4 group">
-                                        <div className="p-3 bg-primary/10 text-primary rounded-xl group-hover:bg-primary group-hover:text-white transition-colors shadow-sm">
+
+                                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(settings.contact_address)}`} target="_blank" rel="noopener noreferrer" className="flex items-start gap-4 group">
+                                        <div className="p-3 shrink-0 bg-primary/10 text-primary rounded-xl group-hover:bg-primary group-hover:text-white transition-colors shadow-sm">
                                             <MapPin className="h-5 w-5" />
                                         </div>
                                         <div>
@@ -204,6 +207,7 @@ export default function Contact() {
                                             <p className="text-foreground font-medium">{renderEditableText("contact_address")}</p>
                                         </div>
                                     </a>
+
                                 </div>
                             </div>
                         </div>

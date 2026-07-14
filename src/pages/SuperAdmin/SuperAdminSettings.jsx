@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import {
     Globe, User, Lock, Smartphone, Save, Image as ImageIcon,
-    ShieldCheck, MapPin, Edit2, X, Mail, Phone, Loader2
+    ShieldCheck, MapPin, Edit2, X, Mail, Phone, Loader2, Trash2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
@@ -290,15 +290,16 @@ export default function SuperAdminSettings() {
                             className="bg-white border border-border/40 rounded-2xl md:rounded-3xl shadow-sm overflow-hidden"
                         >
                             <div className="p-6 md:p-10">
-                                <div className="flex justify-between items-start mb-8">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mb-6 md:mb-8">
                                     <h3 className="text-xl md:text-2xl font-bold font-serif text-foreground flex items-center gap-2">
-                                        <Globe className="h-6 w-6 text-[#2A5244]" /> Site Configuration
+                                        <Globe className="h-5 w-5 md:h-6 md:w-6 text-[#2A5244] shrink-0" />
+                                        Site Configuration
                                     </h3>
                                     <button
                                         onClick={() => setIsSiteModalOpen(true)}
-                                        className="flex items-center gap-2 text-sm font-bold text-[#2A5244] bg-[#2A5244]/10 hover:bg-[#2A5244]/20 px-4 py-2 rounded-lg transition-colors active:scale-95"
+                                        className="flex items-center justify-center gap-2 text-sm font-bold text-[#2A5244] bg-[#2A5244]/10 hover:bg-[#2A5244]/20 px-4 py-2.5 sm:py-2 rounded-lg transition-colors active:scale-95 w-full sm:w-auto shrink-0"
                                     >
-                                        <Edit2 className="h-4 w-4" /> Edit Configuration
+                                        <Edit2 className="h-4 w-4 shrink-0" /> Edit Configuration
                                     </button>
                                 </div>
 
@@ -314,22 +315,22 @@ export default function SuperAdminSettings() {
 
                                     <div>
                                         <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-[#FA6D16] mb-4">Social Media Presence</h4>
-                                        <ul className="space-y-4 text-sm font-medium text-muted-foreground">
+                                        <ul className="space-y-4 text-sm font-medium text-muted-foreground w-full overflow-hidden">
                                             <li className="flex items-center gap-3">
-                                                <YoutubeIcon className="h-4 w-4 text-[#FF0000]" />
+                                                <YoutubeIcon className="h-4 w-4 text-[#FF0000] shrink-0" />
                                                 <a href={siteDetails.youtube} target="_blank" rel="noreferrer" className="hover:text-[#2A5244] truncate">{siteDetails.youtube || "Not set"}</a>
                                             </li>
                                             <li className="flex items-center gap-3">
-                                                <InstagramIcon className="h-4 w-4 text-[#E1306C]" />
+                                                <InstagramIcon className="h-4 w-4 text-[#E1306C] shrink-0" />
                                                 <a href={siteDetails.instagram} target="_blank" rel="noreferrer" className="hover:text-[#2A5244] truncate">{siteDetails.instagram || "Not set"}</a>
                                             </li>
                                             <li className="flex items-center gap-3">
-                                                <FacebookIcon className="h-4 w-4 text-[#1877F2]" />
+                                                <FacebookIcon className="h-4 w-4 text-[#1877F2] shrink-0" />
                                                 <a href={siteDetails.facebook} target="_blank" rel="noreferrer" className="hover:text-[#2A5244] truncate">{siteDetails.facebook || "Not set"}</a>
                                             </li>
                                             <li className="flex items-center gap-3">
-                                                <WhatsAppIcon className="h-4 w-4 text-[#25D366]" />
-                                                <span>{siteDetails.whatsapp || "Not set"}</span>
+                                                <WhatsAppIcon className="h-4 w-4 text-[#25D366] shrink-0" />
+                                                <span className="truncate">{siteDetails.whatsapp || "Not set"}</span>
                                             </li>
                                         </ul>
                                     </div>
@@ -356,11 +357,37 @@ export default function SuperAdminSettings() {
 
                                     <div className="flex flex-col md:flex-row gap-8 items-center md:items-start">
                                         <div className="flex flex-col items-center gap-4 shrink-0">
-                                            <div className="h-28 w-28 rounded-full bg-linear-to-br from-[#2A5244] to-[#1a332a] flex items-center justify-center border-4 border-white shadow-lg overflow-hidden">
-                                                {accountDetails.profilePic ? (
-                                                    <img src={accountDetails.profilePic} alt={accountDetails.name} className="h-full w-full object-cover" />
-                                                ) : (
-                                                    <span className="text-white font-serif text-4xl font-bold">{accountDetails.name.charAt(0) || "S"}</span>
+                                            <div className="relative group">
+                                                <div
+                                                    className="h-28 w-28 rounded-full bg-linear-to-br from-[#2A5244] to-[#1a332a] flex items-center justify-center border-4 border-white shadow-lg overflow-hidden cursor-pointer relative"
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                >
+                                                    {accountDetails.profilePic ? (
+                                                        <img src={accountDetails.profilePic} alt={accountDetails.name} className="h-full w-full object-cover" />
+                                                    ) : (
+                                                        <span className="text-white font-serif text-4xl font-bold">{accountDetails.name.charAt(0) || "S"}</span>
+                                                    )}
+
+                                                    {/* Hover Overlay for Upload */}
+                                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <ImageIcon className="text-white h-8 w-8" />
+                                                    </div>
+                                                </div>
+
+                                                {/* Delete Button (Only shows if a picture exists) */}
+                                                {accountDetails.profilePic && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation(); // Prevents triggering the file upload click
+                                                            setAccountDetails(prev => ({ ...prev, profilePic: "" }));
+                                                            if (fileInputRef.current) fileInputRef.current.value = "";
+                                                        }}
+                                                        className="absolute -top-1 -right-1 z-10 bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-full shadow-lg transition-transform active:scale-90"
+                                                        title="Remove Photo"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
                                                 )}
                                             </div>
 
@@ -375,7 +402,7 @@ export default function SuperAdminSettings() {
                                                 type="button"
                                                 disabled={isUploadingPhoto}
                                                 onClick={() => fileInputRef.current?.click()}
-                                                className="text-xs font-bold text-[#2A5244] hover:text-[#FA6D16] transition-colors flex items-center gap-1.5 px-3 py-1.5 bg-[#2A5244]/5 rounded-full disabled:opacity-50"
+                                                className="text-xs font-bold text-[#2A5244] hover:text-[#FA6D16] transition-colors flex items-center gap-1.5 px-3 py-1.5 bg-[#2A5244]/5 rounded-full disabled:opacity-50 mt-1"
                                             >
                                                 {isUploadingPhoto ? (
                                                     <Loader2 className="h-3.5 w-3.5 animate-spin" />

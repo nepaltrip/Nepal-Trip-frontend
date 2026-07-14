@@ -2,28 +2,35 @@ import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { toast } from "react-toastify";
-import { io } from "socket.io-client"; // ✨ ADDED SOCKET.IO
+import { io } from "socket.io-client";
 
-import { Shield, LogOut, Bell, MapPin, ChevronDown, X, Info, Image, MessageSquare, Phone, User } from "lucide-react";
+// ✨ ADDED 'Edit2' to Lucide imports
+import { Shield, LogOut, Bell, MapPin, ChevronDown, X, Info, Image, MessageSquare, Phone, User, Edit2 } from "lucide-react";
 
 import { InquiryDialog } from "./InquiryDialog";
 import { LoginModal } from "./LoginModal";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { MobileDrawer } from "./MobileDrawer";
-import { NotificationPanel } from "./NotificationPanel"; // ✨ ADDED NOTIFICATION PANEL
+import { NotificationPanel } from "./NotificationPanel";
 import { useLocationEngine } from "../../hooks/useLocationEngine";
 
 import api from "../../api/axios";
-import { logOutState } from "../../store/slices/authSlice";
+import { logOutState, updateUser } from "../../store/slices/authSlice";
 import { GeoLocationModal } from "../modal/GeoLocationModal";
+
+// ✨ IMPORT THE NEW MODAL
+import { UpdateProfileModal } from "../modal/UpdateProfileModal";
 
 export function Navbar({ brand = "Nepal Trip" }) {
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-    const [unreadIndicator, setUnreadIndicator] = useState(false); // ✨ NEW STATE
+    const [unreadIndicator, setUnreadIndicator] = useState(false);
     const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [latestNotification, setLatestNotification] = useState(null);
+
+    // ✨ NEW STATE FOR EDIT PROFILE MODAL
+    const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
 
     // Ref to track the profile dropdown area
     const profileRef = useRef(null);
@@ -44,7 +51,7 @@ export function Navbar({ brand = "Nepal Trip" }) {
     const firstName = user?.name ? user.name.split(" ")[0] : "User";
     const initial = firstName.charAt(0).toUpperCase();
 
-    // ✨ SOCKET INITIALIZATION
+    // SOCKET INITIALIZATION
     useEffect(() => {
         let socket;
         if (isAuthenticated && user) {
@@ -65,7 +72,7 @@ export function Navbar({ brand = "Nepal Trip" }) {
         };
     }, [isAuthenticated, user]);
 
-    // ✨ 2. INITIAL UNREAD CHECK (Keeps red dot on page refresh)
+    // INITIAL UNREAD CHECK
     useEffect(() => {
         if (isAuthenticated && user) {
             const checkUnreadStatus = async () => {
@@ -82,7 +89,7 @@ export function Navbar({ brand = "Nepal Trip" }) {
         }
     }, [isAuthenticated, user]);
 
-    // ✨ 3. Clear unread indicator when panel opens
+    // Clear unread indicator when panel opens
     useEffect(() => {
         if (isNotificationOpen) setUnreadIndicator(false);
     }, [isNotificationOpen]);
@@ -223,7 +230,6 @@ export function Navbar({ brand = "Nepal Trip" }) {
                         {isAuthenticated && (
                             <button onClick={() => setIsNotificationOpen(true)} className="relative flex h-8 w-8 items-center justify-center rounded-full border border-border/30 text-foreground bg-background/50 hover:bg-muted transition-all">
                                 <Bell className="h-4 w-4" />
-                                {/* ✨ DYNAMIC RED DOT */}
                                 {unreadIndicator && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />}
                             </button>
                         )}
@@ -249,8 +255,21 @@ export function Navbar({ brand = "Nepal Trip" }) {
                                 </button>
 
                                 <div className={`absolute right-0 top-full mt-3 w-64 z-50 rounded-2xl border border-border/50 bg-background/95 p-5 shadow-2xl backdrop-blur-xl transition-all duration-300 origin-top-right ${isProfileOpen ? "scale-100 opacity-100 visible" : "scale-95 opacity-0 invisible"}`}>
+
+                                    {/* ✨ NEW: EDIT PROFILE BUTTON */}
+                                    <button
+                                        onClick={() => {
+                                            setIsProfileOpen(false);
+                                            setIsEditProfileOpen(true);
+                                        }}
+                                        className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-full transition-colors flex items-center justify-center"
+                                        title="Edit Profile"
+                                    >
+                                        <Edit2 size={16} />
+                                    </button>
+
                                     <div className="flex flex-col items-center text-center">
-                                        <div className="h-16 w-16 mb-3 overflow-hidden rounded-full border-2 border-border/50 shadow-sm">
+                                        <div className="h-16 w-16 mb-3 overflow-hidden rounded-full border-2 border-border/50 shadow-sm relative">
                                             {user?.profilePic ? (
                                                 <img src={user.profilePic} alt={user.name} referrerPolicy="no-referrer" className="h-full w-full object-cover" />
                                             ) : (
@@ -335,12 +354,23 @@ export function Navbar({ brand = "Nepal Trip" }) {
                 isLoading={isLoading}
             />
 
-            {/* ✨ Replaced the inline notification block with the dedicated Component */}
             {isAuthenticated && (
                 <NotificationPanel
                     isOpen={isNotificationOpen}
                     onClose={() => setIsNotificationOpen(false)}
-                    newNotification={latestNotification} // ✨ Pass it down!
+                    newNotification={latestNotification}
+                />
+            )}
+
+            {/* ✨ ADDED UPDATE PROFILE MODAL INTEGRATION */}
+            {isAuthenticated && (
+                <UpdateProfileModal
+                    isOpen={isEditProfileOpen}
+                    onClose={() => setIsEditProfileOpen(false)}
+                    user={user}
+                    onUpdateSuccess={(updatedUser) => {
+                        dispatch(updateUser(updatedUser));
+                    }}
                 />
             )}
         </>
