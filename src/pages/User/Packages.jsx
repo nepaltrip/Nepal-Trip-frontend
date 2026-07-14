@@ -267,7 +267,7 @@ const CylinderCard = ({ pkg, index, activeIndex, dragX, onNavigate, isDragging, 
 
             <div className="absolute bottom-0 left-0 right-0 p-5 md:p-10 flex flex-col justify-end transform-gpu">
                 <div className="flex flex-wrap gap-2 mb-3 md:mb-4 pointer-events-auto">
-                    {pkg.serviceTier !== "All" && (
+                    {(pkg.serviceTier !== "All" || activeGodMode) && (
                         <span className={`px-2.5 md:px-4 py-1 md:py-1.5 rounded-full text-xs md:text-sm font-bold flex items-center gap-1.5 border ${getTierBadgeStyle(pkg.serviceTier)}`} onClick={e => e.stopPropagation()}>
                             <Sparkles size={14} className={getTierIconColor(pkg.serviceTier)} />
                             {activeGodMode ? <InlineEditor value={pkg.serviceTier} onSave={(val) => onUpdate(pkg._id, "serviceTier", val)} /> : pkg.serviceTier}
@@ -288,20 +288,32 @@ const CylinderCard = ({ pkg, index, activeIndex, dragX, onNavigate, isDragging, 
                     {activeGodMode ? <InlineTextareaEditor initialValue={pkg.short_description} onSave={(val) => onUpdate(pkg._id, "short_description", val)} /> : <div className="line-clamp-2 md:line-clamp-3">{pkg.short_description}</div>}
                 </div>
 
-                <div className="flex items-center justify-between border-t border-white/20 pt-4 md:pt-6 pointer-events-auto">
-                    <div className="flex flex-col" onClick={e => e.stopPropagation()}>
-                        <span className="text-white/60 text-[10px] md:text-sm font-medium uppercase tracking-wider">
-                            {activeGodMode ? <InlineEditor value={pkg.destination} onSave={(val) => onUpdate(pkg._id, "destination", val)} /> : pkg.destination}
-                        </span>
-                        <div className="flex items-center text-white font-bold text-xl md:text-3xl drop-shadow-sm mt-0.5">
-                            <IndianRupee size={24} className="mr-0.5 md:mr-1" strokeWidth={2.5} />
-                            {activeGodMode ? <InlineEditor value={pkg.price_inr} onSave={(val) => onUpdate(pkg._id, "price_inr", Number(val))} /> : pkg.price_inr?.toLocaleString('en-IN') || 0}
-                        </div>
+                <div className="flex flex-col" onClick={e => e.stopPropagation()}>
+                    <span className="text-white/60 text-[10px] md:text-sm font-medium uppercase tracking-wider">
+                        {activeGodMode ? <InlineEditor value={pkg.destination} onSave={(val) => onUpdate(pkg._id, "destination", val)} /> : pkg.destination}
+                    </span>
+                    <div className="flex items-center text-white font-bold text-xl md:text-3xl drop-shadow-sm mt-0.5">
+                        <IndianRupee size={24} className="mr-0.5 md:mr-1" strokeWidth={2.5} />
+                        {activeGodMode ? (
+                            // ✨ DYNAMIC GOD-MODE PRICE MUTATION
+                            pkg.serviceTier === "Platinum" ? (
+                                <InlineEditor
+                                    value={pkg.price_platinum || 0}
+                                    onSave={(val) => onUpdate(pkg._id, "price_platinum", Number(val))}
+                                />
+                            ) : (
+                                <InlineEditor
+                                    value={pkg.price_gold || 0}
+                                    onSave={(val) => onUpdate(pkg._id, "price_gold", Number(val))}
+                                />
+                            )
+                        ) : (
+                            // Public display logic
+                            pkg.serviceTier === "Platinum"
+                                ? (pkg.price_platinum?.toLocaleString('en-IN') || 0)
+                                : (pkg.price_gold?.toLocaleString('en-IN') || 0)
+                        )}
                     </div>
-
-                    <button onClick={(e) => { e.stopPropagation(); onNavigate(pkg, true); }} className="cursor-pointer bg-[#FA6D16] hover:bg-[#E55B05] text-white px-5 py-2.5 md:px-8 md:py-3.5 rounded-xl md:rounded-2xl font-bold text-sm md:text-lg shadow-xl transition-transform active:scale-95 hover:scale-105">
-                        View Details
-                    </button>
                 </div>
             </div>
         </motion.div>
@@ -375,7 +387,7 @@ const GridCard = ({ pkg, idx, onNavigate, activeGodMode, deletingId, setDeleting
                     <span className="bg-background/90 backdrop-blur text-foreground px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-border/50">
                         {activeGodMode ? <InlineEditor value={pkg.category} onSave={(val) => onUpdate(pkg._id, "category", val)} /> : pkg.category}
                     </span>
-                    {pkg.serviceTier !== "All" && (
+                    {(pkg.serviceTier !== "All" || activeGodMode) && (
                         <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 border ${getTierBadgeStyle(pkg.serviceTier)}`}>
                             <Sparkles size={12} className={getTierIconColor(pkg.serviceTier)} />
                             {activeGodMode ? <InlineEditor value={pkg.serviceTier} onSave={(val) => onUpdate(pkg._id, "serviceTier", val)} /> : pkg.serviceTier}
@@ -405,7 +417,25 @@ const GridCard = ({ pkg, idx, onNavigate, activeGodMode, deletingId, setDeleting
                         <span className="text-xs text-muted-foreground font-medium uppercase">From</span>
                         <div className="text-lg font-bold text-foreground flex items-center">
                             <IndianRupee size={16} strokeWidth={2.5} />
-                            {activeGodMode ? <InlineEditor value={pkg.price_inr} onSave={(val) => onUpdate(pkg._id, "price_inr", Number(val))} /> : pkg.price_inr?.toLocaleString('en-IN') || 0}
+                            {activeGodMode ? (
+                                // ✨ DYNAMIC GOD-MODE PRICE MUTATION
+                                pkg.serviceTier === "Platinum" ? (
+                                    <InlineEditor
+                                        value={pkg.price_platinum || 0}
+                                        onSave={(val) => onUpdate(pkg._id, "price_platinum", Number(val))}
+                                    />
+                                ) : (
+                                    <InlineEditor
+                                        value={pkg.price_gold || 0}
+                                        onSave={(val) => onUpdate(pkg._id, "price_gold", Number(val))}
+                                    />
+                                )
+                            ) : (
+                                // Public display logic
+                                pkg.serviceTier === "Platinum"
+                                    ? (pkg.price_platinum?.toLocaleString('en-IN') || 0)
+                                    : (pkg.price_gold?.toLocaleString('en-IN') || 0)
+                            )}
                         </div>
                     </div>
                     <div className="text-primary text-sm font-bold flex items-center gap-1 group-hover:gap-2 transition-all pointer-events-auto">
@@ -632,9 +662,22 @@ export default function Packages() {
     };
 
     const handleUpdatePackage = async (id, field, value) => {
-        setPackages(prev => prev.map(p => p._id === id ? { ...p, [field]: value } : p));
+        let finalValue = value;
+
+        // ✨ NEW: Auto-format the Tier so "gold", "GOLD", "platinum" etc. all work perfectly
+        if (field === "serviceTier") {
+            const cleanStr = String(value).trim().toLowerCase();
+            if (cleanStr === 'platinum') finalValue = 'Platinum';
+            else if (cleanStr === 'all') finalValue = 'All';
+            else finalValue = 'Gold'; // Default fallback to Gold if they mistype
+        }
+
+        // Update local state immediately
+        setPackages(prev => prev.map(p => p._id === id ? { ...p, [field]: finalValue } : p));
+
         try {
-            await api.put(`/packages/${id}`, { [field]: value });
+            // Save to database
+            await api.put(`/packages/${id}`, { [field]: finalValue });
         } catch (error) {
             toast.error("Failed to save changes.");
         }

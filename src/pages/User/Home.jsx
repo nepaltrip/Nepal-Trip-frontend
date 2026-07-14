@@ -7,7 +7,7 @@ import { Button } from "../../components/ui/button";
 import { InquiryDialog } from "../../components/site/InquiryDialog";
 import { InlineEditor } from "../../components/admin/InlineEditor";
 import api from "../../api/axios";
-import { toast } from "react-toastify"; // Added for elegant alerts
+import { toast } from "react-toastify";
 
 const DynamicIcon = ({ name, className }) => {
     if (!name) return <Icons.HelpCircle className={className} />;
@@ -43,9 +43,8 @@ const HeroContentSkeleton = () => (
 );
 
 // --- Auto-detecting Gallery Media (Image or Video) ---
-// Moved to module scope so it's not redefined (and reset) on every Home render.
 const GalleryMedia = ({ src, className, onError }) => {
-    const [mediaType, setMediaType] = useState(null); // 'video' | 'image' | 'detecting'
+    const [mediaType, setMediaType] = useState(null);
 
     useEffect(() => {
         if (!src) { setMediaType(null); return; }
@@ -56,8 +55,6 @@ const GalleryMedia = ({ src, className, onError }) => {
         if (explicitImageExt.test(src)) { setMediaType('image'); return; }
         if (explicitVideoExt.test(src)) { setMediaType('video'); return; }
 
-        // No recognizable extension (Cloudinary/S3/Drive/signed URLs etc.)
-        // Probe it by actually trying to load it as a video.
         setMediaType('detecting');
         let cancelled = false;
         const probe = document.createElement('video');
@@ -107,13 +104,10 @@ const GalleryMedia = ({ src, className, onError }) => {
         );
     }
 
-    // brief detection window
     return <div className={`${className} bg-muted animate-pulse`} />;
 };
 
-// --- Live URL Editor with instant preview + explicit "lock in" save ---
-// Typing/pasting updates the preview immediately via onLivePreview.
-// Nothing is persisted until the admin clicks the check (✓) button.
+// --- Live URL Editor ---
 const GalleryLiveEditor = ({ initialValue, onSave, onLivePreview }) => {
     const [val, setVal] = useState(initialValue);
 
@@ -122,7 +116,7 @@ const GalleryLiveEditor = ({ initialValue, onSave, onLivePreview }) => {
     const handleChange = (e) => {
         const newVal = e.target.value;
         setVal(newVal);
-        onLivePreview(newVal); // instant preview, not yet saved
+        onLivePreview(newVal);
     };
 
     const handleSave = () => {
@@ -167,7 +161,7 @@ const GalleryLiveEditor = ({ initialValue, onSave, onLivePreview }) => {
     );
 };
 
-// --- Gallery Grid Item: wires the live editor to the live preview ---
+// --- Gallery Grid Item ---
 const GalleryItem = ({ src, idx, isFirst, isSuperAdmin, isMobile, onSave, onDelete, onImageError }) => {
     const [livePreviewSrc, setLivePreviewSrc] = useState(src);
 
@@ -240,6 +234,9 @@ export default function Home() {
     const [isMobile, setIsMobile] = useState(false);
     const [settings, setSettings] = useState(defaultSettings);
 
+    // WhatsApp State
+    const [whatsappNumber, setWhatsappNumber] = useState("");
+
     // Modal State
     const [showResetModal, setShowResetModal] = useState(false);
     const [isResetting, setIsResetting] = useState(false);
@@ -283,11 +280,11 @@ export default function Home() {
 
         const fetchTestimonials = async () => {
             try {
-                const mockDbTestimonials = [
-                    { _id: "t1", rating: 5, message: "Flawlessly planned!", name: "Aman M.", location: "Delhi" },
-                    { _id: "t2", rating: 5, message: "Perfect pacing.", name: "Priya S.", location: "Mumbai" },
-                ];
-                setTestimonials(mockDbTestimonials);
+                // ✨ FIXED: Now actually fetches from your backend instead of using mock data
+                const { data } = await api.get("/content/testimonials");
+                if (data && data.testimonials) {
+                    setTestimonials(data.testimonials);
+                }
             } catch (error) {
                 console.error("Testimonials fetch failure:", error.message);
             } finally {
@@ -295,8 +292,28 @@ export default function Home() {
             }
         };
 
+        const fetchSocialInfo = async () => {
+            try {
+                const { data } = await api.get("/social");
+                if (data && data.data && data.data.whatsapp) {
+                    // Strip all spaces, dashes, and '+' signs
+                    let cleanNum = data.data.whatsapp.replace(/[^0-9]/g, '');
+
+                    // ✨ If the admin only typed a 10-digit number, automatically add '91' (India)
+                    if (cleanNum.length === 10) {
+                        cleanNum = '91' + cleanNum;
+                    }
+
+                    setWhatsappNumber(cleanNum);
+                }
+            } catch (error) {
+                console.error("Social info fetch failure:", error.message);
+            }
+        };
+
         fetchGlobalContent();
         fetchTestimonials();
+        fetchSocialInfo();
         return () => clearTimeout(mountTimer);
     }, []);
 
@@ -345,10 +362,35 @@ export default function Home() {
         newArray[index] = value;
         updateGalleryArray(newArray);
     };
-
-    const handleAddTestimonial = () => setTestimonials([...testimonials, { _id: Date.now().toString(), rating: 5, message: "New review message", name: "Name", location: "City" }]);
-    const handleDeleteTestimonial = (id) => setTestimonials(testimonials.filter(t => t._id !== id));
-    const handleUpdateTestimonial = (id, field, value) => setTestimonials(testimonials.map(t => t._id === id ? { ...t, [field]: value } : t));
+    const syncTestimonialsToDB = async (updatedTestimonials) => {
+        setTestimonials(updatedTestimonials); // Update UI immediately
+        try {
+            await api.put("/content/testimonials", { testimonials: updatedTestimonials });
+        } catch (error) {
+            console.error("Failed to save testimonials:", error);
+            toast.error("Failed to save review to database.");
+        }
+    };
+    const handleAddTestimonial = () => {
+        const newTestimonial = {
+            _id: Date.now().toString(), // Temp ID, backend will replace it
+            rating: 5,
+            message: "New review message",
+            name: "Name",
+            location: "City"
+        };
+        syncTestimonialsToDB([...testimonials, newTestimonial]);
+    };
+    const handleDeleteTestimonial = (id) => {
+        const filtered = testimonials.filter(t => t._id !== id);
+        syncTestimonialsToDB(filtered);
+    };
+    const handleUpdateTestimonial = (id, field, value) => {
+        const updated = testimonials.map(t =>
+            t._id === id ? { ...t, [field]: value } : t
+        );
+        syncTestimonialsToDB(updated);
+    };
 
     // --- Emergency Restore Feature ---
     const handleRestoreDefaults = async () => {
@@ -372,281 +414,305 @@ export default function Home() {
     const showTestimonials = testimonials.length > 0 || !isMobile;
 
     return (
-        <div className={`w-full transition-all duration-1000 ease-out transform ${isMounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+        <>
+            {/* ✨ MAIN ANIMATED CONTAINER ✨ 
+                This now wraps only the page sections, preventing the sticky buttons from breaking.
+            */}
+            <div className={`w-full transition-all duration-1000 ease-out transform ${isMounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
 
-            {/* Hero Section */}
-            <section className="relative isolate overflow-hidden min-h-[80vh] flex flex-col justify-center bg-black group">
-                {isSuperAdmin && !isMobile && (
-                    <div className="absolute top-24 right-8 z-50 bg-black/80 p-4 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-3 border border-white/20">
-                        <p className="text-white text-xs font-bold uppercase tracking-wider">Edit Background Videos</p>
-                        <div className="flex flex-col gap-1 text-xs">
-                            <span className="text-white/60">Desktop Video URL:</span>
-                            <div className="bg-white/10 p-1 rounded min-w-62.5">
-                                <InlineEditor value={settings.heroVideoUrl || defaultSettings.heroVideoUrl} onSave={(val) => handleCMSFieldSave("heroVideoUrl", val)} />
-                            </div>
-                        </div>
-                        <div className="flex flex-col gap-1 text-xs">
-                            <span className="text-white/60">Mobile Video URL:</span>
-                            <div className="bg-white/10 p-1 rounded min-w-62.5">
-                                <InlineEditor value={settings.heroVideoMobileUrl || defaultSettings.heroVideoMobileUrl} onSave={(val) => handleCMSFieldSave("heroVideoMobileUrl", val)} />
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                <video ref={desktopVideoRef} autoPlay loop muted playsInline className="absolute inset-0 -z-10 h-full w-full object-cover hidden md:block opacity-40">
-                    <source src={settings.heroVideoUrl || defaultSettings.heroVideoUrl} type="video/mp4" />
-                </video>
-                <video ref={mobileVideoRef} autoPlay loop muted playsInline className="absolute inset-0 -z-10 h-full w-full object-cover block md:hidden opacity-40">
-                    <source src={settings.heroVideoMobileUrl || defaultSettings.heroVideoMobileUrl} type="video/mp4" />
-                </video>
-                <div className="absolute inset-0 -z-10 bg-linear-to-b from-black/60 via-transparent to-black/80" />
-
-                <div className="mx-auto w-full max-w-7xl px-4 py-32 sm:px-6 sm:py-40 lg:px-8 lg:py-52 relative z-10">
-                    {isLoadingContent ? (
-                        <HeroContentSkeleton />
-                    ) : (
-                        <div className="max-w-2xl text-primary-foreground">
-                            <span className="inline-block rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs uppercase tracking-widest backdrop-blur-md">
-                                {renderEditableText("tagline")}
-                            </span>
-                            <h1 className="mt-6 font-serif text-4xl leading-tight sm:text-5xl lg:text-6xl text-white">
-                                {renderEditableText("heroTitle")}
-                            </h1>
-                            <p className="mt-5 max-w-xl text-base text-white/85 sm:text-lg leading-relaxed">
-                                {renderEditableText("heroSubtitle", "textarea")}
-                            </p>
-                            <div className="mt-8 flex flex-wrap gap-4">
-                                <InquiryDialog
-                                    source="Home Hero Section"
-                                    trigger={
-                                        <Button size="lg" className="bg-[#FA6D16] px-8 text-white hover:bg-[#E55B05] shadow-lg transition-transform active:scale-95 font-bold rounded-xl h-12">
-                                            Plan my trip
-                                        </Button>
-                                    }
-                                />
-                                <Link to="/packages">
-                                    <Button size="lg" variant="outline" className="border-white/40 bg-white/10 text-white hover:bg-white/20 transition-transform active:scale-95 rounded-xl h-12">
-                                        Browse packages <ArrowRight className="ml-2 h-4 w-4" />
-                                    </Button>
-                                </Link>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </section>
-
-            {/* Feature Grids */}
-            {showWhyUs && (
-                <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-                    {settings.whyUsCards.length > 0 && (
-                        <div className="mb-8">
-                            <h2 className="font-serif text-2xl font-bold">{renderEditableText("whyUsTitle")}</h2>
-                        </div>
-                    )}
-                    <div className="grid gap-8 md:grid-cols-3">
-                        {settings.whyUsCards.map((card, idx) => (
-                            <div key={card._id || idx} className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm hover:shadow-md transition-shadow relative group">
-                                {isSuperAdmin && !isMobile && (
-                                    <button onClick={() => handleDeleteWhyUsCard(idx)} className="absolute top-4 right-4 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Trash2 className="h-4 w-4" />
-                                    </button>
-                                )}
-
-                                <div className="flex items-center gap-3">
-                                    <DynamicIcon name={card.icon} className="h-8 w-8 text-[#FA6D16]" />
-                                    {isSuperAdmin && !isMobile && (
-                                        <div className="text-[11px] font-mono bg-muted/40 text-muted-foreground px-2 py-1 rounded border border-border/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                                            Icon: <InlineEditor value={card.icon || "Compass"} onSave={(val) => handleUpdateWhyUsCard(idx, "icon", val)} />
-                                        </div>
-                                    )}
+                {/* Hero Section */}
+                <section className="relative isolate overflow-hidden min-h-[80vh] flex flex-col justify-center bg-black group">
+                    {isSuperAdmin && !isMobile && (
+                        <div className="absolute top-24 right-8 z-50 bg-black/80 p-4 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-3 border border-white/20">
+                            <p className="text-white text-xs font-bold uppercase tracking-wider">Edit Background Videos</p>
+                            <div className="flex flex-col gap-1 text-xs">
+                                <span className="text-white/60">Desktop Video URL:</span>
+                                <div className="bg-white/10 p-1 rounded min-w-62.5">
+                                    <InlineEditor value={settings.heroVideoUrl || defaultSettings.heroVideoUrl} onSave={(val) => handleCMSFieldSave("heroVideoUrl", val)} />
                                 </div>
-
-                                <h3 className="mt-4 font-serif text-xl text-foreground font-semibold">
-                                    {isMobile ? card.title : <InlineEditor value={card.title} onSave={(val) => handleUpdateWhyUsCard(idx, "title", val)} />}
-                                </h3>
-                                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                                    {isMobile ? card.body : <InlineEditor type="textarea" value={card.body} onSave={(val) => handleUpdateWhyUsCard(idx, "body", val)} />}
-                                </p>
                             </div>
-                        ))}
-                        {isSuperAdmin && !isMobile && (
-                            <div onClick={handleAddWhyUsCard} className="rounded-2xl border-2 border-dashed border-border/60 bg-transparent p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors opacity-60 hover:opacity-100 min-h-40">
-                                <Plus className="h-8 w-8 text-muted-foreground mb-2" />
-                                <span className="text-sm font-medium text-muted-foreground">Add Feature Card</span>
-                            </div>
-                        )}
-                    </div>
-                </section>
-            )}
-
-            {/* Gallery Section */}
-            {showGallery && (
-                <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
-                    {settings.galleryPreview.length > 0 && (
-                        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                            <div>
-                                <p className="font-serif text-sm uppercase tracking-widest text-[#FA6D16] font-bold">
-                                    {renderEditableText("galleryTagline")}
-                                </p>
-                                <h2 className="mt-1 font-serif text-3xl sm:text-4xl font-bold text-foreground tracking-tight">
-                                    {renderEditableText("galleryTitle")}
-                                </h2>
-                            </div>
-                            <div className="flex gap-4">
-                                {isSuperAdmin && !isMobile && (
-                                    <Button onClick={handleAddGalleryImage} variant="outline" className="font-bold rounded-full">
-                                        <Plus className="mr-2 h-4 w-4" /> Add Media
-                                    </Button>
-                                )}
-                                <Link to="/gallery">
-                                    <Button variant="ghost" className="text-foreground hover:bg-muted font-bold rounded-full">
-                                        View full gallery <ArrowRight className="ml-2 h-4 w-4" />
-                                    </Button>
-                                </Link>
+                            <div className="flex flex-col gap-1 text-xs">
+                                <span className="text-white/60">Mobile Video URL:</span>
+                                <div className="bg-white/10 p-1 rounded min-w-62.5">
+                                    <InlineEditor value={settings.heroVideoMobileUrl || defaultSettings.heroVideoMobileUrl} onSave={(val) => handleCMSFieldSave("heroVideoMobileUrl", val)} />
+                                </div>
                             </div>
                         </div>
                     )}
 
-                    <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-4">
-                        {settings.galleryPreview.map((src, idx) => (
-                            <GalleryItem
-                                key={idx}
-                                src={src}
-                                idx={idx}
-                                isFirst={idx === 0}
-                                isSuperAdmin={isSuperAdmin}
-                                isMobile={isMobile}
-                                onSave={handleUpdateGalleryImage}
-                                onDelete={handleDeleteGalleryImage}
-                                onImageError={handleImageError}
-                            />
-                        ))}
-                        {isSuperAdmin && !isMobile && settings.galleryPreview.length === 0 && (
-                            <div onClick={handleAddGalleryImage} className="aspect-4/3 rounded-2xl border-2 border-dashed border-border/60 bg-transparent flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors opacity-60 hover:opacity-100">
-                                <ImageOff className="h-8 w-8 text-muted-foreground mb-2" />
-                                <span className="text-sm font-medium text-muted-foreground">Gallery is empty. Click to add.</span>
+                    <video ref={desktopVideoRef} autoPlay loop muted playsInline className="absolute inset-0 -z-10 h-full w-full object-cover hidden md:block opacity-40">
+                        <source src={settings.heroVideoUrl || defaultSettings.heroVideoUrl} type="video/mp4" />
+                    </video>
+                    <video ref={mobileVideoRef} autoPlay loop muted playsInline className="absolute inset-0 -z-10 h-full w-full object-cover block md:hidden opacity-40">
+                        <source src={settings.heroVideoMobileUrl || defaultSettings.heroVideoMobileUrl} type="video/mp4" />
+                    </video>
+                    <div className="absolute inset-0 -z-10 bg-linear-to-b from-black/60 via-transparent to-black/80" />
+
+                    <div className="mx-auto w-full max-w-7xl px-4 py-32 sm:px-6 sm:py-40 lg:px-8 lg:py-52 relative z-10">
+                        {isLoadingContent ? (
+                            <HeroContentSkeleton />
+                        ) : (
+                            <div className="max-w-2xl text-primary-foreground">
+                                <span className="inline-block rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs uppercase tracking-widest backdrop-blur-md">
+                                    {renderEditableText("tagline")}
+                                </span>
+                                <h1 className="mt-6 font-serif text-4xl leading-tight sm:text-5xl lg:text-6xl text-white">
+                                    {renderEditableText("heroTitle")}
+                                </h1>
+                                <p className="mt-5 max-w-xl text-base text-white/85 sm:text-lg leading-relaxed">
+                                    {renderEditableText("heroSubtitle", "textarea")}
+                                </p>
+                                <div className="mt-8 flex flex-wrap gap-4">
+                                    <InquiryDialog
+                                        source="Home Hero Section"
+                                        trigger={
+                                            <Button size="lg" className="bg-[#FA6D16] px-8 text-white hover:bg-[#E55B05] shadow-lg transition-transform active:scale-95 font-bold rounded-xl h-12">
+                                                Plan my trip
+                                            </Button>
+                                        }
+                                    />
+                                    <Link to="/packages">
+                                        <Button size="lg" variant="outline" className="border-white/40 bg-white/10 text-white hover:bg-white/20 transition-transform active:scale-95 rounded-xl h-12">
+                                            Browse packages <ArrowRight className="ml-2 h-4 w-4" />
+                                        </Button>
+                                    </Link>
+                                </div>
                             </div>
                         )}
                     </div>
                 </section>
-            )}
 
-            {/* Testimonials Block */}
-            {isLoadingTestimonials ? (
-                <TestimonialsSkeleton />
-            ) : showTestimonials && (
-                <section className="bg-muted/30 py-20 transition-opacity duration-500 relative">
-                    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                        <div className="flex justify-between items-end">
-                            <div>
-                                <p className="font-serif text-sm uppercase tracking-widest text-[#FA6D16] font-bold">
-                                    {renderEditableText("testimonialsTagline")}
-                                </p>
-                                <h2 className="mt-1 font-serif text-3xl sm:text-4xl font-bold text-foreground tracking-tight">
-                                    {renderEditableText("testimonialsTitle")}
-                                </h2>
+                {/* Feature Grids */}
+                {showWhyUs && (
+                    <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+                        {settings.whyUsCards.length > 0 && (
+                            <div className="mb-8">
+                                <h2 className="font-serif text-2xl font-bold">{renderEditableText("whyUsTitle")}</h2>
                             </div>
-                            {isSuperAdmin && !isMobile && (
-                                <Button onClick={handleAddTestimonial} variant="outline" className="rounded-full">
-                                    <Plus className="mr-2 h-4 w-4" /> Add Review
-                                </Button>
-                            )}
-                        </div>
-
-                        <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                            {testimonials.map((t) => (
-                                <blockquote key={t._id} className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm hover:shadow-md transition-shadow relative group">
+                        )}
+                        <div className="grid gap-8 md:grid-cols-3">
+                            {settings.whyUsCards.map((card, idx) => (
+                                <div key={card._id || idx} className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm hover:shadow-md transition-shadow relative group">
                                     {isSuperAdmin && !isMobile && (
-                                        <button onClick={() => handleDeleteTestimonial(t._id)} className="absolute top-4 right-4 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                        <button onClick={() => handleDeleteWhyUsCard(idx)} className="absolute top-4 right-4 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <Trash2 className="h-4 w-4" />
                                         </button>
                                     )}
-                                    <div className="flex gap-1 text-amber-500">
-                                        {Array.from({ length: t.rating }).map((_, i) => (
-                                            <Star key={i} className="h-4 w-4 fill-current" />
-                                        ))}
+
+                                    <div className="flex items-center gap-3">
+                                        <DynamicIcon name={card.icon} className="h-8 w-8 text-[#FA6D16]" />
+                                        {isSuperAdmin && !isMobile && (
+                                            <div className="text-[11px] font-mono bg-muted/40 text-muted-foreground px-2 py-1 rounded border border-border/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                                                Icon: <InlineEditor value={card.icon || "Compass"} onSave={(val) => handleUpdateWhyUsCard(idx, "icon", val)} />
+                                            </div>
+                                        )}
                                     </div>
-                                    <p className="mt-3 text-sm leading-relaxed text-foreground font-medium">
-                                        “{isMobile ? t.message : <InlineEditor type="textarea" value={t.message} onSave={(val) => handleUpdateTestimonial(t._id, "message", val)} />}”
+
+                                    <h3 className="mt-4 font-serif text-xl text-foreground font-semibold">
+                                        {isMobile ? card.title : <InlineEditor value={card.title} onSave={(val) => handleUpdateWhyUsCard(idx, "title", val)} />}
+                                    </h3>
+                                    <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                                        {isMobile ? card.body : <InlineEditor type="textarea" value={card.body} onSave={(val) => handleUpdateWhyUsCard(idx, "body", val)} />}
                                     </p>
-                                    <footer className="mt-4 text-xs font-semibold flex items-center gap-1">
-                                        <span className="text-foreground">
-                                            {isMobile ? t.name : <InlineEditor value={t.name} onSave={(val) => handleUpdateTestimonial(t._id, "name", val)} />}
-                                        </span>
-                                        <span className="text-muted-foreground"> · </span>
-                                        <span className="text-muted-foreground">
-                                            {isMobile ? t.location : <InlineEditor value={t.location} onSave={(val) => handleUpdateTestimonial(t._id, "location", val)} />}
-                                        </span>
-                                    </footer>
-                                </blockquote>
+                                </div>
                             ))}
-                            {isSuperAdmin && !isMobile && testimonials.length === 0 && (
-                                <div onClick={handleAddTestimonial} className="rounded-2xl border-2 border-dashed border-border/60 bg-transparent flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors opacity-60 hover:opacity-100 min-h-37.5">
+                            {isSuperAdmin && !isMobile && (
+                                <div onClick={handleAddWhyUsCard} className="rounded-2xl border-2 border-dashed border-border/60 bg-transparent p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors opacity-60 hover:opacity-100 min-h-40">
                                     <Plus className="h-8 w-8 text-muted-foreground mb-2" />
-                                    <span className="text-sm font-medium text-muted-foreground">No reviews yet. Click to add one.</span>
+                                    <span className="text-sm font-medium text-muted-foreground">Add Feature Card</span>
                                 </div>
                             )}
                         </div>
-                    </div>
-                </section>
-            )}
+                    </section>
+                )}
 
-            {/* Bottom Funnel Call to Action Panel */}
-            {settings.showCtaCard !== false ? (
-                <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 relative group">
-                    {isSuperAdmin && !isMobile && (
-                        <button
-                            onClick={() => handleCMSFieldSave("showCtaCard", false)}
-                            className="absolute top-24 right-12 z-50 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity bg-white p-2 rounded-full shadow-lg"
-                            title="Remove CTA Section"
-                        >
-                            <Trash2 className="h-5 w-5" />
-                        </button>
-                    )}
-                    <div className="relative overflow-hidden rounded-[2rem] bg-[#2A5244] px-8 py-16 text-white sm:px-16 sm:py-20 shadow-xl border border-[#2A5244]/20">
-                        <div className="absolute -right-20 -top-20 opacity-10 pointer-events-none">
-                            <Map className="h-96 w-96 text-white" />
-                        </div>
-                        <div className="relative z-10 flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
-                            <div className="max-w-xl">
-                                <span className="font-serif text-sm uppercase tracking-widest text-[#FA6D16] font-bold inline-block bg-black/20 p-1 rounded">
-                                    {renderEditableText("ctaSubtitle")}
-                                </span>
-                                <h2 className="mt-2 font-serif text-3xl leading-tight sm:text-4xl lg:text-5xl font-bold text-white">
-                                    <div className="bg-black/10 rounded p-1">
-                                        {renderEditableText("ctaTitle")}
-                                    </div>
-                                </h2>
-                                <p className="mt-4 text-base text-white/80 sm:text-lg leading-relaxed">
-                                    <div className="bg-black/10 rounded p-1">
-                                        {renderEditableText("ctaBody", "textarea")}
-                                    </div>
-                                </p>
+                {/* Gallery Section */}
+                {showGallery && (
+                    <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
+                        {settings.galleryPreview.length > 0 && (
+                            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                                <div>
+                                    <p className="font-serif text-sm uppercase tracking-widest text-[#FA6D16] font-bold">
+                                        {renderEditableText("galleryTagline")}
+                                    </p>
+                                    <h2 className="mt-1 font-serif text-3xl sm:text-4xl font-bold text-foreground tracking-tight">
+                                        {renderEditableText("galleryTitle")}
+                                    </h2>
+                                </div>
+                                <div className="flex gap-4">
+                                    {isSuperAdmin && !isMobile && (
+                                        <Button onClick={handleAddGalleryImage} variant="outline" className="font-bold rounded-full">
+                                            <Plus className="mr-2 h-4 w-4" /> Add Media
+                                        </Button>
+                                    )}
+                                    <Link to="/gallery">
+                                        <Button variant="ghost" className="text-foreground hover:bg-muted font-bold rounded-full">
+                                            View full gallery <ArrowRight className="ml-2 h-4 w-4" />
+                                        </Button>
+                                    </Link>
+                                </div>
                             </div>
-                            <Link to="/discover" className="shrink-0">
-                                <Button size="lg" className="bg-[#FA6D16] hover:bg-[#E55B05] text-white font-bold rounded-xl h-14 text-base shadow-lg transition-transform active:scale-95 px-8">
-                                    Discover Destinations
-                                </Button>
-                            </Link>
-                        </div>
-                    </div>
-                </section>
-            ) : (
-                isSuperAdmin && !isMobile && (
-                    <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-                        <div onClick={() => handleCMSFieldSave("showCtaCard", true)} className="rounded-[2rem] border-2 border-dashed border-border/60 bg-transparent flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors opacity-60 hover:opacity-100 min-h-37.5">
-                            <Plus className="h-8 w-8 text-muted-foreground mb-2" />
-                            <span className="text-sm font-medium text-muted-foreground">CTA Section is hidden. Click to add back.</span>
+                        )}
+
+                        <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-4">
+                            {settings.galleryPreview.map((src, idx) => (
+                                <GalleryItem
+                                    key={idx}
+                                    src={src}
+                                    idx={idx}
+                                    isFirst={idx === 0}
+                                    isSuperAdmin={isSuperAdmin}
+                                    isMobile={isMobile}
+                                    onSave={handleUpdateGalleryImage}
+                                    onDelete={handleDeleteGalleryImage}
+                                    onImageError={handleImageError}
+                                />
+                            ))}
+                            {isSuperAdmin && !isMobile && settings.galleryPreview.length === 0 && (
+                                <div onClick={handleAddGalleryImage} className="aspect-4/3 rounded-2xl border-2 border-dashed border-border/60 bg-transparent flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors opacity-60 hover:opacity-100">
+                                    <ImageOff className="h-8 w-8 text-muted-foreground mb-2" />
+                                    <span className="text-sm font-medium text-muted-foreground">Gallery is empty. Click to add.</span>
+                                </div>
+                            )}
                         </div>
                     </section>
-                )
+                )}
+
+                {/* Testimonials Block */}
+                {isLoadingTestimonials ? (
+                    <TestimonialsSkeleton />
+                ) : showTestimonials && (
+                    <section className="bg-muted/30 py-20 transition-opacity duration-500 relative">
+                        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                            <div className="flex justify-between items-end">
+                                <div>
+                                    <p className="font-serif text-sm uppercase tracking-widest text-[#FA6D16] font-bold">
+                                        {renderEditableText("testimonialsTagline")}
+                                    </p>
+                                    <h2 className="mt-1 font-serif text-3xl sm:text-4xl font-bold text-foreground tracking-tight">
+                                        {renderEditableText("testimonialsTitle")}
+                                    </h2>
+                                </div>
+                                {isSuperAdmin && !isMobile && (
+                                    <Button onClick={handleAddTestimonial} variant="outline" className="rounded-full">
+                                        <Plus className="mr-2 h-4 w-4" /> Add Review
+                                    </Button>
+                                )}
+                            </div>
+
+                            <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                                {testimonials.map((t) => (
+                                    <blockquote key={t._id} className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm hover:shadow-md transition-shadow relative group">
+                                        {isSuperAdmin && !isMobile && (
+                                            <button onClick={() => handleDeleteTestimonial(t._id)} className="absolute top-4 right-4 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        )}
+                                        <div className="flex gap-1 text-amber-500">
+                                            {Array.from({ length: t.rating }).map((_, i) => (
+                                                <Star key={i} className="h-4 w-4 fill-current" />
+                                            ))}
+                                        </div>
+                                        <p className="mt-3 text-sm leading-relaxed text-foreground font-medium">
+                                            “{isMobile ? t.message : <InlineEditor type="textarea" value={t.message} onSave={(val) => handleUpdateTestimonial(t._id, "message", val)} />}”
+                                        </p>
+                                        <footer className="mt-4 text-xs font-semibold flex items-center gap-1">
+                                            <span className="text-foreground">
+                                                {isMobile ? t.name : <InlineEditor value={t.name} onSave={(val) => handleUpdateTestimonial(t._id, "name", val)} />}
+                                            </span>
+                                            <span className="text-muted-foreground"> · </span>
+                                            <span className="text-muted-foreground">
+                                                {isMobile ? t.location : <InlineEditor value={t.location} onSave={(val) => handleUpdateTestimonial(t._id, "location", val)} />}
+                                            </span>
+                                        </footer>
+                                    </blockquote>
+                                ))}
+                                {isSuperAdmin && !isMobile && testimonials.length === 0 && (
+                                    <div onClick={handleAddTestimonial} className="rounded-2xl border-2 border-dashed border-border/60 bg-transparent flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors opacity-60 hover:opacity-100 min-h-37.5">
+                                        <Plus className="h-8 w-8 text-muted-foreground mb-2" />
+                                        <span className="text-sm font-medium text-muted-foreground">No reviews yet. Click to add one.</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </section>
+                )}
+
+                {/* Bottom Funnel Call to Action Panel */}
+                {settings.showCtaCard !== false ? (
+                    <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 relative group">
+                        {isSuperAdmin && !isMobile && (
+                            <button
+                                onClick={() => handleCMSFieldSave("showCtaCard", false)}
+                                className="absolute top-24 right-12 z-50 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity bg-white p-2 rounded-full shadow-lg"
+                                title="Remove CTA Section"
+                            >
+                                <Trash2 className="h-5 w-5" />
+                            </button>
+                        )}
+                        <div className="relative overflow-hidden rounded-[2rem] bg-[#2A5244] px-8 py-16 text-white sm:px-16 sm:py-20 shadow-xl border border-[#2A5244]/20">
+                            <div className="absolute -right-20 -top-20 opacity-10 pointer-events-none">
+                                <Map className="h-96 w-96 text-white" />
+                            </div>
+                            <div className="relative z-10 flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
+                                <div className="max-w-xl">
+                                    <span className="font-serif text-sm uppercase tracking-widest text-[#FA6D16] font-bold inline-block bg-black/20 p-1 rounded">
+                                        {renderEditableText("ctaSubtitle")}
+                                    </span>
+                                    <h2 className="mt-2 font-serif text-3xl leading-tight sm:text-4xl lg:text-5xl font-bold text-white">
+                                        <div className="bg-black/10 rounded p-1">
+                                            {renderEditableText("ctaTitle")}
+                                        </div>
+                                    </h2>
+                                    <p className="mt-4 text-base text-white/80 sm:text-lg leading-relaxed">
+                                        <div className="bg-black/10 rounded p-1">
+                                            {renderEditableText("ctaBody", "textarea")}
+                                        </div>
+                                    </p>
+                                </div>
+                                <Link to="/discover" className="shrink-0">
+                                    <Button size="lg" className="bg-[#FA6D16] hover:bg-[#E55B05] text-white font-bold rounded-xl h-14 text-base shadow-lg transition-transform active:scale-95 px-8">
+                                        Discover Destinations
+                                    </Button>
+                                </Link>
+                            </div>
+                        </div>
+                    </section>
+                ) : (
+                    isSuperAdmin && !isMobile && (
+                        <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+                            <div onClick={() => handleCMSFieldSave("showCtaCard", true)} className="rounded-[2rem] border-2 border-dashed border-border/60 bg-transparent flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors opacity-60 hover:opacity-100 min-h-37.5">
+                                <Plus className="h-8 w-8 text-muted-foreground mb-2" />
+                                <span className="text-sm font-medium text-muted-foreground">CTA Section is hidden. Click to add back.</span>
+                            </div>
+                        </section>
+                    )
+                )}
+
+            </div>
+            {/* ✨ END OF ANIMATED CONTAINER ✨ */}
+
+            {/* ✨ FIXED ELEMENTS LIVE OUTSIDE THE TRANSFORMED DIV ✨ */}
+
+            {/* WhatsApp Floating Button */}
+            {whatsappNumber && (
+                <a
+                    href={`https://api.whatsapp.com/send?phone=${whatsappNumber}&text=${encodeURIComponent("Hello Nepal Trip! I'm interested in planning a journey and would love some more information.")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="fixed bottom-20 right-4 md:bottom-8 md:right-8 z-100 bg-[#25D366] hover:bg-[#1ebd5a] text-white p-3.5 rounded-full shadow-2xl transition-all hover:scale-110 active:scale-95 flex items-center justify-center animate-in fade-in slide-in-from-bottom-4 duration-500"
+                    aria-label="Chat on WhatsApp"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.005-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z" />
+                    </svg>
+                </a>
             )}
 
             {/* Floating Restore Button & Beautiful Dialog */}
             {isSuperAdmin && (
                 <>
-                    <div className="fixed bottom-6 right-6 z-50">
+                    <div className="fixed bottom-6 left-6 md:left-8 z-50">
                         <Button
                             onClick={() => setShowResetModal(true)}
                             variant="destructive"
@@ -680,6 +746,6 @@ export default function Home() {
                     )}
                 </>
             )}
-        </div>
+        </>
     );
 }
