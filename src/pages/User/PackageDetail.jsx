@@ -1,13 +1,25 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { Check, X, Clock, MapPin, ArrowLeft, ChevronDown, Image as ImageIcon, Trash2, Plus, Settings2, Pencil, Loader2 } from "lucide-react";
+import { Check, X, Clock, MapPin, ArrowLeft, ChevronDown, Image as ImageIcon, Trash2, Plus, Settings2, Pencil, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { InquiryDialog } from "../../components/site/InquiryDialog";
 import { Button } from "../../components/ui/button";
 import { InlineEditor } from "../../components/admin/InlineEditor";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
+
+// --- Tier Styling Helpers ---
+const getTierBadgeStyle = (tier) => {
+    if (tier === 'Gold') return "bg-gradient-to-br from-yellow-200 via-amber-400 to-yellow-600 text-yellow-950 border-amber-300/50 shadow-[0_0_15px_rgba(251,191,36,0.3)]";
+    if (tier === 'Platinum') return "bg-gradient-to-br from-slate-100 via-slate-300 to-slate-500 text-slate-900 border-slate-400/50 shadow-[0_0_15px_rgba(148,163,184,0.3)]";
+    return "bg-slate-200 text-slate-800 border-slate-300";
+};
+const getTierIconColor = (tier) => {
+    if (tier === 'Gold') return "fill-amber-600 text-amber-600";
+    if (tier === 'Platinum') return "fill-slate-600 text-slate-600";
+    return "fill-slate-500 text-slate-500";
+};
 
 // Advanced Media Handling Component
 const SeamlessMedia = ({ src, className }) => {
@@ -205,7 +217,6 @@ export default function PackageDetail() {
 
     const backRoute = location.state?.from === 'discover' ? '/discover' : '/packages';
     const backText = location.state?.from === 'discover' ? 'Back to Discover' : 'Back to Packages';
-    const [selectedTier, setSelectedTier] = useState(location.state?.tier || 'Gold');
 
     const [isDesktop, setIsDesktop] = useState(true);
     useEffect(() => {
@@ -216,13 +227,6 @@ export default function PackageDetail() {
     }, []);
 
     const [pkg, setPkg] = useState(null);
-    useEffect(() => {
-        if (pkg) {
-            if (pkg.price_gold && !pkg.price_platinum) setSelectedTier('Gold');
-            if (!pkg.price_gold && pkg.price_platinum) setSelectedTier('Platinum');
-        }
-    }, [pkg]);
-
     const activeGodMode = isSuperAdmin && isDesktop;
     const [loading, setLoading] = useState(true);
     const [liveDesktop, setLiveDesktop] = useState("");
@@ -246,7 +250,7 @@ export default function PackageDetail() {
         fetchPackage();
     }, [slug, navigate]);
 
-    // ✨ HEARTBEAT LOOP: Track Inside Premium Tier windows continuously (Every 5 seconds)
+    // ✨ HEARTBEAT LOOP: Track Inside Package windows continuously
     useEffect(() => {
         if (loading || !pkg || !pkg._id) return;
 
@@ -256,7 +260,7 @@ export default function PackageDetail() {
                 await api.post(`/packages/${pkg._id}/telemetry`, {
                     visitorId,
                     actionType: 'inside_detail',
-                    tier: selectedTier, // Continually streams 'Gold' or 'Platinum'
+                    tier: pkg.serviceTier, // Uses the package's actual tier
                     durationSeconds: 5,
                     packageName: pkg.title,
                     category: pkg.category,
@@ -269,12 +273,22 @@ export default function PackageDetail() {
 
         const timer = setInterval(emitTierAttentionPulse, 5000);
         return () => clearInterval(timer);
-    }, [selectedTier, loading, pkg]);
+    }, [loading, pkg]);
 
+    // Format tier to ensure clean save
     const handleUpdate = async (field, value) => {
-        setPkg(prev => ({ ...prev, [field]: value }));
+        let finalValue = value;
+
+        if (field === "serviceTier") {
+            const cleanStr = String(value).trim().toLowerCase();
+            if (cleanStr === 'platinum') finalValue = 'Platinum';
+            else if (cleanStr === 'all') finalValue = 'All';
+            else finalValue = 'Gold';
+        }
+
+        setPkg(prev => ({ ...prev, [field]: finalValue }));
         try {
-            await api.put(`/packages/${pkg._id}`, { [field]: value });
+            await api.put(`/packages/${pkg._id}`, { [field]: finalValue });
         } catch (error) {
             toast.error("Failed to save changes.");
         }
@@ -315,31 +329,10 @@ export default function PackageDetail() {
                     <div className="h-14 md:h-20 w-full max-w-2xl bg-foreground/10 rounded-2xl"></div>
                 </div>
             </section>
-            <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 animate-pulse">
-                <div className="grid gap-12 lg:grid-cols-3 lg:gap-16">
-                    <div className="lg:col-span-2 space-y-12 md:space-y-16">
-                        <div className="grid grid-cols-2 md:grid-cols-4 grid-rows-2 gap-2 md:gap-3 rounded-[1.5rem] md:rounded-[2rem] overflow-hidden shadow-lg h-70 sm:h-87.5 md:h-112.5">
-                            <div className="col-span-2 row-span-2 bg-muted/60"></div>
-                            <div className="hidden md:block bg-muted/60"></div>
-                            <div className="col-span-1 md:col-span-2 row-span-1 bg-muted/60"></div>
-                            <div className="hidden md:block bg-muted/60"></div>
-                        </div>
-                        <div>
-                            <div className="h-8 w-1/3 bg-muted rounded-lg mb-6"></div>
-                            <div className="space-y-4">
-                                <div className="h-4 w-full bg-muted rounded"></div>
-                                <div className="h-4 w-full bg-muted rounded"></div>
-                                <div className="h-4 w-5/6 bg-muted rounded"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
         </div>
     );
 
     if (!pkg) return null;
-    const sidebarFeatures = pkg.sidebar_features || ["Free itinerary tailoring", "Trusted agency since 2015", "24×7 on-trip support"];
 
     return (
         <div className="w-full bg-background font-sans pb-20">
@@ -403,6 +396,7 @@ export default function PackageDetail() {
             <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
                 <div className="grid gap-12 lg:grid-cols-3 lg:gap-16">
                     <div className="lg:col-span-2 space-y-12 md:space-y-16">
+                        {/* Gallery Grid */}
                         <div className="grid grid-cols-2 md:grid-cols-4 grid-rows-2 gap-2 md:gap-3 rounded-[1.5rem] md:rounded-[2rem] overflow-hidden shadow-lg h-70 sm:h-87.5 md:h-112.5 group/gallery relative">
                             {[0, 1, 2, 3].map((idx) => {
                                 const hasImg = pkg.gallery_images && pkg.gallery_images[idx];
@@ -448,15 +442,17 @@ export default function PackageDetail() {
                             })}
                         </div>
 
+                        {/* Description */}
                         <div>
                             <h2 className="font-serif text-2xl md:text-3xl font-bold text-foreground mb-4">
                                 {activeGodMode ? <InlineEditor value={pkg.about_title || "About this journey"} onSave={(val) => handleUpdate("about_title", val)} /> : pkg.about_title || "About this journey"}
                             </h2>
-                            <div className="leading-relaxed text-muted-foreground text-sm md:text-lg">
+                            <div className="leading-relaxed text-muted-foreground text-sm md:text-lg whitespace-pre-line">
                                 {activeGodMode ? <InlineTextareaEditor initialValue={pkg.full_description || pkg.short_description} onSave={(val) => handleUpdate("full_description", val)} placeholder="Write full description here..." /> : pkg.full_description || pkg.short_description}
                             </div>
                         </div>
 
+                        {/* Itinerary */}
                         <div>
                             <h2 className="font-serif text-2xl md:text-3xl font-bold text-foreground mb-6 md:mb-8 flex items-center justify-between">
                                 Day-by-day itinerary
@@ -474,35 +470,33 @@ export default function PackageDetail() {
                         </div>
                     </div>
 
-                    {/* FLOATING PREMIUM SIDEBAR PANEL */}
+                    {/* ✨ UPDATED FLOATING SIDEBAR PANEL ✨ */}
                     <aside className="lg:sticky lg:top-28 lg:h-fit z-10">
                         <div className="rounded-[2rem] border border-border bg-card p-6 shadow-xl relative overflow-hidden">
-                            <div className="absolute top-0 right-0 -mt-16 -mr-16 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+                            {/* Background glow adapts to tier */}
+                            <div className={`absolute top-0 right-0 -mt-16 -mr-16 w-48 h-48 rounded-full blur-3xl pointer-events-none ${pkg.serviceTier === 'Platinum' ? 'bg-slate-400/20' : 'bg-amber-400/20'}`} />
 
-                            <div className="flex bg-muted p-1 rounded-xl mb-6 relative z-10">
-                                <button
-                                    onClick={() => setSelectedTier('Gold')}
-                                    disabled={!pkg.price_gold && !activeGodMode}
-                                    className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${selectedTier === 'Gold' ? 'bg-linear-to-br from-amber-200 to-amber-500 text-amber-950 shadow-md' : 'text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed'}`}
-                                >
-                                    Gold Tier
-                                </button>
-                                <button
-                                    onClick={() => setSelectedTier('Platinum')}
-                                    disabled={!pkg.price_platinum && !activeGodMode}
-                                    className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${selectedTier === 'Platinum' ? 'bg-linear-to-br from-slate-200 to-slate-400 text-slate-900 shadow-md' : 'text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed'}`}
-                                >
-                                    Platinum Tier
-                                </button>
-                            </div>
+                            {/* Static Tier Badge (Editable in God Mode) */}
+                            {(pkg.serviceTier !== "All" || activeGodMode) && (
+                                <div className="mb-6 flex">
+                                    <span className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 border w-full justify-center shadow-sm ${getTierBadgeStyle(pkg.serviceTier)}`}>
+                                        <Sparkles size={16} className={getTierIconColor(pkg.serviceTier)} />
+                                        {activeGodMode ? <InlineEditor value={pkg.serviceTier} onSave={(val) => handleUpdate("serviceTier", val)} /> : `${pkg.serviceTier} Package`}
+                                    </span>
+                                </div>
+                            )}
 
                             <p className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">Starting from</p>
                             <div className="mt-2 flex items-baseline gap-1 text-foreground">
                                 <span className="font-serif text-4xl md:text-5xl font-bold flex items-center relative z-10">
                                     ₹{activeGodMode ? (
-                                        <InlineEditor value={selectedTier === 'Gold' ? pkg.price_gold : pkg.price_platinum} type="number" onSave={(val) => handleUpdate(selectedTier === 'Gold' ? 'price_gold' : 'price_platinum', Number(val))} />
+                                        <InlineEditor
+                                            value={pkg.serviceTier === 'Platinum' ? pkg.price_platinum : pkg.price_gold}
+                                            type="number"
+                                            onSave={(val) => handleUpdate(pkg.serviceTier === 'Platinum' ? 'price_platinum' : 'price_gold', Number(val))}
+                                        />
                                     ) : (
-                                        Number(selectedTier === 'Gold' ? pkg.price_gold : pkg.price_platinum).toLocaleString("en-IN")
+                                        Number(pkg.serviceTier === 'Platinum' ? pkg.price_platinum : pkg.price_gold).toLocaleString("en-IN") || 0
                                     )}
                                 </span>
                             </div>
@@ -512,7 +506,7 @@ export default function PackageDetail() {
                             </div>
 
                             <div className="mt-6 md:mt-8 space-y-3 relative z-10">
-                                <InquiryDialog packageId={pkg._id} packageTitle={`${pkg.title} (${selectedTier} Tier)`} source={`Package Detail - ${selectedTier} Tier`} trigger={
+                                <InquiryDialog packageId={pkg._id} packageTitle={`${pkg.title} (${pkg.serviceTier} Package)`} source={`Package Detail - ${pkg.serviceTier}`} trigger={
                                     <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12 md:h-14 rounded-xl text-base md:text-lg font-bold shadow-md transition-transform hover:scale-[1.02] active:scale-[0.98]">
                                         Book / Inquire now
                                     </Button>

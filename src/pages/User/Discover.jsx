@@ -195,11 +195,8 @@ const CylinderCard = ({ pkg, allPackages, index, activeIndex, dragX, navigate, i
 
     const handleGalleryClick = (e, category) => {
         e.stopPropagation();
-        // Flag the conversion for the current session!
         activeVibeSession.current.galleryClicked = true;
-
-        localStorage.setItem("gallerySearch", pkg.destination);
-        navigate(`/gallery`);
+        navigate(`/gallery?destination=${encodeURIComponent(pkg.destination)}`);
     };
 
     return (
