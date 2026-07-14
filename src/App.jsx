@@ -1,37 +1,25 @@
 import React, { Suspense, lazy, useEffect, useState, useRef } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Outlet } from 'react-router-dom';
-import { ToastContainer, toast } from 'react-toastify'; // ✨ ADDED: Imported toast
+import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+
+// Keep essential global layout pieces static
 import { Navbar } from './components/site/Navbar';
 import { Footer } from './components/site/Footer';
-import { AdminLayout } from './components/admin/AdminLayout';
 import './App.css';
-import RegisteredUsers from './pages/Admin/RegisteredUsers';
-import { SuperAdminLayout } from './components/superadmin/SuperAdminLayout';
 
 import { useDispatch, useSelector } from 'react-redux';
 import { setCredentials, logOutState } from './store/slices/authSlice';
-import { setUploadJob } from './store/slices/uploadSlice';
 import FloatingUploadManager from './components/Gallery/FloatingUploadManager';
 import api from './api/axios';
-
-// PWA Virtual Register Hook
 import { useRegisterSW } from 'virtual:pwa-register/react';
-import { SuperAdminBroadcast } from './pages/SuperAdmin/SuperAdminBroadcast';
 
 // ==========================================
-// Web Push Utility
+// Lazy Load Layouts (Separates Admin code from Public code)
+// Note: Handling named exports with .then(module => ({ default: module.ExportName }))
 // ==========================================
-const urlBase64ToUint8Array = (base64String) => {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-};
+const AdminLayout = lazy(() => import('./components/admin/AdminLayout').then(m => ({ default: m.AdminLayout })));
+const SuperAdminLayout = lazy(() => import('./components/superadmin/SuperAdminLayout').then(m => ({ default: m.SuperAdminLayout })));
 
 // ==========================================
 // Lazy Load Public Pages
@@ -51,6 +39,7 @@ const Discover = lazy(() => import('./pages/User/Discover'));
 const AdminAnalytics = lazy(() => import('./pages/Admin/AdminAnalytics'));
 const InquiryDesk = lazy(() => import('./pages/Admin/InquiryDesk'));
 const AdminSettings = lazy(() => import('./pages/Admin/AdminSettings'));
+const RegisteredUsers = lazy(() => import('./pages/Admin/RegisteredUsers')); // ✨ FIXED: Was statically imported
 
 // ==========================================
 // Lazy Load Super Admin Pages
@@ -59,6 +48,21 @@ const SuperAdminAnalytics = lazy(() => import('./pages/SuperAdmin/SuperAdminAnal
 const SuperAdminInquiries = lazy(() => import('./pages/SuperAdmin/SuperAdminInquiries'));
 const SuperAdminUsers = lazy(() => import('./pages/SuperAdmin/SuperAdminUsers'));
 const SuperAdminSettings = lazy(() => import('./pages/SuperAdmin/SuperAdminSettings'));
+const SuperAdminBroadcast = lazy(() => import('./pages/SuperAdmin/SuperAdminBroadcast').then(m => ({ default: m.SuperAdminBroadcast }))); // ✨ FIXED: Was statically imported
+
+// ==========================================
+// Web Push Utility
+// ==========================================
+const urlBase64ToUint8Array = (base64String) => {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+};
 
 // ==========================================
 // Global Scroll To Top
@@ -100,7 +104,6 @@ function UpdateNotification() {
 // ==========================================
 const PageLoader = () => (
   <div className="fixed inset-0 z-100 flex h-screen w-full flex-col items-center justify-center bg-[#FDFBF7]">
-    {/* Loader UI omitted for brevity, keep your exact UI here */}
     <div className="flex flex-col items-center justify-center gap-6">
       <div className="relative flex items-center justify-center h-32 w-32 md:h-40 md:w-40 rounded-full bg-linear-to-r from-slate-300 via-slate-100 to-slate-300 bg-size-[400%_100%] animate-[shimmer_1.5s_infinite_linear]">
         <div className="flex items-center justify-center h-[calc(100%-12px)] w-[calc(100%-12px)] rounded-full bg-[#FDFBF7]">
@@ -161,7 +164,6 @@ function App() {
         const { data } = await api.post('/auth/refresh-token');
         dispatch(setCredentials({ user: data.user, accessToken: data.accessToken }));
       } catch (error) {
-        // ✨ NEW: Check if the error is specifically a ban action from the backend
         if (
           error.response &&
           error.response.status === 403 &&
@@ -169,11 +171,9 @@ function App() {
         ) {
           toast.error("Your account has been banned !!", {
             position: "top-center",
-            autoClose: false, // Optional: forces user to see it until they click
+            autoClose: false,
           });
         }
-
-        // Log them out in Redux
         dispatch(logOutState());
       } finally {
         setIsCheckingAuth(false);
@@ -184,7 +184,6 @@ function App() {
   }, [dispatch]);
 
   useEffect(() => {
-    // Fire the traffic metric exactly ONCE per hard app load
     const logTrafficHit = async () => {
       try {
         let visitorId = localStorage.getItem('nt_visitor_id');
@@ -203,7 +202,6 @@ function App() {
     logTrafficHit();
   }, []);
 
-  // Web Push Subscription Logic
   useEffect(() => {
     const subscribeToWebPush = async () => {
       if (isAuthenticated && 'serviceWorker' in navigator && 'PushManager' in window) {
@@ -271,12 +269,14 @@ function App() {
             <Route path="/gallery" element={<Gallery />} />
             <Route path="/discover" element={<Discover />} />
           </Route>
+
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminAnalytics />} />
             <Route path="users" element={<RegisteredUsers />} />
             <Route path="inquiries" element={<InquiryDesk />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>
+
           <Route path="/superadmin" element={<SuperAdminLayout />}>
             <Route index element={<SuperAdminAnalytics />} />
             <Route path="inquiries" element={<SuperAdminInquiries />} />
@@ -284,6 +284,7 @@ function App() {
             <Route path="broadcast" element={<SuperAdminBroadcast />} />
             <Route path="settings" element={<SuperAdminSettings />} />
           </Route>
+
           <Route path="*" element={
             <div className="flex h-screen w-full flex-col items-center justify-center bg-[#FDFBF7] font-serif text-2xl text-foreground">
               404 - Page Not Found
