@@ -160,7 +160,6 @@ export function SuperAdminBroadcast() {
         return `${Math.floor(hours / 24)}d ago`;
     };
 
-    // ✨ UI UPDATE: Removed 'zone' as a standalone target option
     const targetOptions = [
         { id: "all", label: "All Accounts", icon: Globe },
         { id: "users", label: "Standard Users", icon: Users },
@@ -175,49 +174,42 @@ export function SuperAdminBroadcast() {
     ];
 
     return (
-        <div className="max-w-7xl mx-auto space-y-6 pb-10">
+        <div className="space-y-8 pb-12 font-sans bg-[#FDFBF7] min-h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
             {/* HEADER */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 shrink-0 rounded-2xl bg-purple-100 flex items-center justify-center border border-purple-200 shadow-sm">
-                        <Megaphone className="w-6 h-6 text-purple-600" />
-                    </div>
-                    <div>
-                        <h1 className="text-2xl font-black font-serif text-foreground uppercase tracking-tight">
-                            Targeted Broadcast
-                        </h1>
-                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">
-                            Deploy Instant Notifications & Emails
-                        </p>
-                    </div>
+                <div>
+                    <h1 className="text-3xl md:text-4xl font-bold font-serif text-foreground tracking-tight">
+                        Targeted Broadcast
+                    </h1>
+                    <p className="text-sm md:text-base text-muted-foreground mt-2">
+                        Deploy instant notifications & emails across the platform.
+                    </p>
                 </div>
 
-                <div className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-full text-sm font-bold border border-green-200 shadow-sm">
+                <div className="flex items-center gap-2 bg-emerald-100 text-emerald-700 px-4 py-2 rounded-full text-sm font-bold border border-emerald-200 shadow-sm w-fit">
                     <span className="relative flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                     </span>
                     {liveUsersCount} Verified Users Online
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
 
                 {/* --- MAIN CREATOR (LEFT) --- */}
                 <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="lg:col-span-2 bg-white rounded-[2rem] border border-border/40 shadow-xl shadow-slate-200/40 overflow-hidden flex flex-col"
+                    className="lg:col-span-2 bg-white rounded-2xl border border-border/40 shadow-sm overflow-hidden flex flex-col"
                 >
-                    <div className="h-1 w-full bg-linear-to-r from-purple-300 via-purple-600 to-purple-300" />
-
                     <div className="p-6 md:p-8 space-y-8">
                         {/* STEP 1: TARGETING */}
                         <div className="space-y-4">
-                            <label className="text-xs font-black uppercase tracking-[0.2em] text-purple-600 ml-1">
+                            <h2 className="text-xl font-bold font-serif text-foreground mb-4">
                                 1. Select Audience
-                            </label>
-                            {/* ✨ UI UPDATE: Switched to grid-cols-2 md:grid-cols-4 since there are 4 options now */}
+                            </h2>
+
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                                 {targetOptions.map((opt) => {
                                     const isSel = formData.audience === opt.id;
@@ -227,17 +219,17 @@ export function SuperAdminBroadcast() {
                                             type="button"
                                             onClick={() => handleAudienceChange(opt.id)}
                                             className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border transition-all duration-200 group min-h-20
-                                                ${isSel ? "bg-purple-600 text-white border-purple-600 shadow-md scale-[1.02]"
-                                                    : "bg-purple-50/50 text-muted-foreground border-border/50 hover:border-purple-300 hover:bg-purple-50"}`}
+                                                ${isSel ? "bg-[#2A5244] text-white border-[#2A5244] shadow-md scale-[1.02]"
+                                                    : "bg-[#FDFBF7] text-muted-foreground border-border/40 hover:border-[#2A5244]/50 hover:shadow-sm"}`}
                                         >
-                                            <opt.icon className={`w-5 h-5 shrink-0 ${isSel ? "text-white" : "group-hover:text-purple-600"}`} />
+                                            <opt.icon className={`w-5 h-5 shrink-0 ${isSel ? "text-white" : "group-hover:text-[#2A5244]"}`} />
                                             <span className="font-bold text-[10px] uppercase tracking-wide text-center">{opt.label}</span>
                                         </button>
                                     );
                                 })}
                             </div>
 
-                            {/* ✨ UI UPDATE: Location Targeting is now an Optional Filter for mass-audiences */}
+                            {/* Location Targeting as Optional Filter */}
                             <AnimatePresence mode="popLayout">
                                 {formData.audience !== 'specific' && (
                                     <motion.div
@@ -246,8 +238,8 @@ export function SuperAdminBroadcast() {
                                         exit={{ opacity: 0, height: 0 }}
                                         className="pt-2"
                                     >
-                                        <div className="bg-purple-50/40 rounded-xl border border-purple-100 p-4 space-y-3">
-                                            <label className="text-[10px] font-black uppercase tracking-[0.15em] text-purple-500 flex items-center gap-1.5">
+                                        <div className="bg-[#FDFBF7] rounded-xl border border-border/40 p-4 space-y-3">
+                                            <label className="text-[10px] font-black uppercase tracking-[0.15em] text-[#2A5244] flex items-center gap-1.5">
                                                 <Filter className="w-3.5 h-3.5" /> Optional Location Filter
                                             </label>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -257,7 +249,7 @@ export function SuperAdminBroadcast() {
                                                         value={selectedStateCode}
                                                         options={[{ label: "Pan India (All States)", value: "" }, ...statesList.map(s => ({ label: s.name, value: s.isoCode }))]}
                                                         onChange={handleStateChange}
-                                                        theme="purple"
+                                                        theme="green"
                                                     />
                                                 </div>
                                                 <div className={!selectedStateCode ? "opacity-50 pointer-events-none" : ""}>
@@ -266,7 +258,7 @@ export function SuperAdminBroadcast() {
                                                         value={formData.district}
                                                         options={[{ label: "All Districts in State", value: "" }, ...districtsList.map(d => ({ label: d.name, value: d.name }))]}
                                                         onChange={(e) => setFormData(prev => ({ ...prev, district: e.target.value }))}
-                                                        theme="purple"
+                                                        theme="green"
                                                     />
                                                 </div>
                                             </div>
@@ -291,7 +283,7 @@ export function SuperAdminBroadcast() {
                                                 placeholder="Search user by name or email..."
                                                 value={searchQuery}
                                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                                className="w-full pl-10 h-11 rounded-xl bg-muted/20 border border-border/50 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all"
+                                                className="w-full pl-10 h-11 rounded-xl bg-[#FDFBF7] border border-border/50 text-sm focus:border-[#2A5244] focus:ring-1 focus:ring-[#2A5244] outline-none transition-all"
                                             />
                                         </div>
                                         <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
@@ -304,20 +296,20 @@ export function SuperAdminBroadcast() {
                                                     <div
                                                         key={emp._id}
                                                         onClick={() => setFormData(prev => ({ ...prev, specificUserId: emp._id }))}
-                                                        className={`flex items-center justify-between p-2.5 rounded-lg border cursor-pointer transition-colors
-                                                            ${isSelected ? "bg-purple-50 border-purple-300" : "bg-white border-border/40 hover:bg-muted/20"}`}
+                                                        className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer transition-colors
+                                                            ${isSelected ? "bg-[#2A5244]/5 border-[#2A5244]/30" : "bg-white border-border/40 hover:bg-[#FDFBF7]"}`}
                                                     >
                                                         <div className="flex items-center gap-3">
                                                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black shrink-0
-                                                                ${isSelected ? "bg-purple-600 text-white" : "bg-muted text-muted-foreground"}`}>
+                                                                ${isSelected ? "bg-[#2A5244] text-white" : "bg-muted text-muted-foreground"}`}>
                                                                 {emp.name.charAt(0)}
                                                             </div>
                                                             <div className="flex flex-col">
-                                                                <span className={`font-bold text-xs ${isSelected ? "text-purple-700" : "text-foreground"}`}>{emp.name}</span>
+                                                                <span className={`font-bold text-xs ${isSelected ? "text-[#2A5244]" : "text-foreground"}`}>{emp.name}</span>
                                                                 <span className="text-[10px] text-muted-foreground">{emp.email} • {emp.role}</span>
                                                             </div>
                                                         </div>
-                                                        {isSelected && <CheckCircle2 className="w-4 h-4 text-purple-600 shrink-0" />}
+                                                        {isSelected && <CheckCircle2 className="w-4 h-4 text-[#2A5244] shrink-0" />}
                                                     </div>
                                                 );
                                             })}
@@ -328,10 +320,10 @@ export function SuperAdminBroadcast() {
                         </div>
 
                         {/* STEP 2: MESSAGE */}
-                        <div className="space-y-4 pt-4 border-t border-border/40">
-                            <label className="text-xs font-black uppercase tracking-[0.2em] text-purple-600 ml-1">
+                        <div className="space-y-4 pt-6 border-t border-border/40">
+                            <h2 className="text-xl font-bold font-serif text-foreground mb-4">
                                 2. Compose Message
-                            </label>
+                            </h2>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="md:col-span-2">
@@ -341,7 +333,7 @@ export function SuperAdminBroadcast() {
                                         value={formData.title}
                                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                                         placeholder="Broadcast Title (e.g., Scheduled Maintenance)"
-                                        className="w-full h-12 rounded-xl border border-border/50 bg-muted/10 px-4 text-sm font-bold outline-none focus:border-purple-500 focus:bg-white transition-all shadow-sm"
+                                        className="w-full h-12 rounded-xl border border-border/50 bg-[#FDFBF7] px-4 text-sm font-bold outline-none focus:border-[#2A5244] focus:bg-white transition-all shadow-sm"
                                     />
                                 </div>
                                 <div>
@@ -350,7 +342,7 @@ export function SuperAdminBroadcast() {
                                         value={formData.type}
                                         options={typeOptions}
                                         onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                                        theme="purple"
+                                        theme="green"
                                     />
                                 </div>
                             </div>
@@ -362,7 +354,7 @@ export function SuperAdminBroadcast() {
                                     value={formData.message}
                                     onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                                     placeholder="Write your announcement here..."
-                                    className="w-full rounded-xl border border-border/50 bg-muted/10 p-4 text-sm font-medium outline-none focus:border-purple-500 focus:bg-white transition-all resize-none shadow-sm"
+                                    className="w-full rounded-xl border border-border/50 bg-[#FDFBF7] p-4 text-sm font-medium outline-none focus:border-[#2A5244] focus:bg-white transition-all resize-none shadow-sm"
                                 />
                                 <div className="absolute bottom-3 right-4 text-xs text-muted-foreground font-bold">
                                     {formData.message.length} / 200
@@ -375,7 +367,7 @@ export function SuperAdminBroadcast() {
                         <button
                             onClick={handleSendBroadcast}
                             disabled={isSending || !formData.title || !formData.message}
-                            className="w-full flex items-center justify-center gap-2 rounded-xl bg-purple-600 h-14 px-8 text-sm font-black text-white uppercase tracking-widest transition-all hover:bg-purple-700 active:scale-[0.98] shadow-lg shadow-purple-600/20 disabled:opacity-50 disabled:pointer-events-none disabled:scale-100"
+                            className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#2A5244] h-14 px-8 text-sm font-black text-white uppercase tracking-widest transition-all hover:bg-[#2A5244]/90 active:scale-[0.98] shadow-md disabled:opacity-50 disabled:pointer-events-none disabled:scale-100"
                         >
                             {isSending ? (
                                 <>
@@ -397,14 +389,14 @@ export function SuperAdminBroadcast() {
                     <motion.div
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        className="bg-white rounded-[2rem] border border-border/40 shadow-xl shadow-slate-200/40 p-6"
+                        className="bg-white rounded-2xl border border-border/40 shadow-sm p-6"
                     >
-                        <h3 className="text-[10px] font-black text-purple-600 flex items-center gap-2 mb-4 uppercase tracking-[0.2em]">
-                            <Radio className="h-3.5 w-3.5" /> Push Preview
-                        </h3>
+                        <h2 className="text-xl font-bold font-serif text-foreground flex items-center gap-2 mb-4">
+                            <Radio className="h-5 w-5 text-[#2A5244]" /> Push Preview
+                        </h2>
 
-                        <div className={`relative p-4 rounded-xl border shadow-sm transition-colors duration-300 ${formData.type === 'urgent' ? 'bg-red-50/50 border-red-200' : formData.type === 'marketing' ? 'bg-orange-50/50 border-orange-200' : 'bg-purple-50/50 border-purple-200'}`}>
-                            <span className={`absolute top-4 left-3 h-2 w-2 rounded-full ${formData.type === 'urgent' ? 'bg-red-500' : formData.type === 'marketing' ? 'bg-orange-500' : 'bg-purple-600'}`} />
+                        <div className={`relative p-4 rounded-xl border shadow-sm transition-colors duration-300 ${formData.type === 'urgent' ? 'bg-red-50/50 border-red-200' : formData.type === 'marketing' ? 'bg-[#FA6D16]/5 border-[#FA6D16]/20' : 'bg-[#2A5244]/5 border-[#2A5244]/20'}`}>
+                            <span className={`absolute top-4 left-3 h-2 w-2 rounded-full ${formData.type === 'urgent' ? 'bg-red-500' : formData.type === 'marketing' ? 'bg-[#FA6D16]' : 'bg-[#2A5244]'}`} />
                             <div className="pl-4 pr-1">
                                 <h4 className="text-sm font-black text-foreground mb-1 line-clamp-1">
                                     {formData.title || "Notification Title"}
@@ -415,7 +407,7 @@ export function SuperAdminBroadcast() {
                             </div>
                         </div>
 
-                        <div className="mt-4 flex items-start gap-2 bg-muted/20 p-3 rounded-lg border border-border/40">
+                        <div className="mt-4 flex items-start gap-2 bg-[#FDFBF7] p-3 rounded-lg border border-border/40">
                             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
                             <p className="text-[10px] text-muted-foreground font-bold leading-relaxed uppercase tracking-wider">
                                 Targets will receive this instantly inside the app, and via Web Push & Email if offline.
@@ -428,24 +420,24 @@ export function SuperAdminBroadcast() {
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.1 }}
-                        className="bg-white rounded-[2rem] border border-border/40 shadow-xl shadow-slate-200/40 overflow-hidden flex flex-col h-100"
+                        className="bg-white rounded-2xl border border-border/40 shadow-sm overflow-hidden flex flex-col h-100"
                     >
-                        <div className="p-5 border-b border-border/40 bg-muted/5 flex items-center justify-between">
-                            <h3 className="text-[10px] font-black text-purple-600 flex items-center gap-2 uppercase tracking-[0.2em]">
-                                <History className="h-3.5 w-3.5" /> Audit Log
-                            </h3>
-                            <span className="text-[9px] font-black bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full uppercase">Recent</span>
+                        <div className="p-5 border-b border-border/40 bg-[#FDFBF7] flex items-center justify-between">
+                            <h2 className="text-xl font-bold font-serif text-foreground flex items-center gap-2">
+                                <History className="h-5 w-5 text-[#2A5244]" /> Audit Log
+                            </h2>
+                            <span className="text-[10px] font-bold bg-[#2A5244]/10 text-[#2A5244] px-2 py-0.5 rounded-full uppercase tracking-wider">Recent</span>
                         </div>
 
-                        <div className="p-4 space-y-3 overflow-y-auto custom-scrollbar bg-muted/10 h-full">
+                        <div className="p-4 space-y-3 overflow-y-auto custom-scrollbar bg-white h-full">
                             {isLoadingHistory ? (
                                 <div className="flex justify-center py-10 opacity-50">
-                                    <Radio className="w-6 h-6 animate-spin text-purple-600" />
+                                    <Radio className="w-6 h-6 animate-spin text-[#2A5244]" />
                                 </div>
                             ) : broadcastHistory.length > 0 ? (
                                 broadcastHistory.map((b) => (
-                                    <div key={b._id} className="p-4 bg-white border border-border/50 rounded-2xl hover:border-purple-300 transition-all relative overflow-hidden group shadow-sm">
-                                        <div className={`absolute top-0 left-0 w-1 h-full transition-colors ${b.alertType === 'urgent' ? 'bg-red-500' : b.alertType === 'marketing' ? 'bg-orange-500' : 'bg-purple-600'}`} />
+                                    <div key={b._id} className="p-4 bg-white border border-border/40 rounded-xl hover:border-[#2A5244]/30 transition-all relative overflow-hidden group shadow-sm">
+                                        <div className={`absolute top-0 left-0 w-1 h-full transition-colors ${b.alertType === 'urgent' ? 'bg-red-500' : b.alertType === 'marketing' ? 'bg-[#FA6D16]' : 'bg-[#2A5244]'}`} />
 
                                         <div className="flex justify-between items-start mb-2">
                                             <h4 className="font-bold text-xs text-foreground truncate pr-2">{b.title}</h4>
@@ -459,23 +451,22 @@ export function SuperAdminBroadcast() {
                                                 <Clock className="w-3.5 h-3.5" />
                                                 <span className="text-[9px] font-black uppercase">{getTimeAgo(b.createdAt)}</span>
                                             </div>
-                                            <div className="flex items-center gap-1.5 bg-purple-50 px-2 py-1 rounded-md border border-purple-100">
-                                                <Target className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-                                                <span className="text-[9px] font-black text-purple-700">{b.recipientCount} reached</span>
+                                            <div className="flex items-center gap-1.5 bg-[#2A5244]/10 px-2 py-1 rounded-md border border-[#2A5244]/20">
+                                                <Target className="w-3.5 h-3.5 text-[#2A5244] shrink-0" />
+                                                <span className="text-[9px] font-black text-[#2A5244]">{b.recipientCount} reached</span>
                                             </div>
                                         </div>
                                     </div>
                                 ))
                             ) : (
-                                <div className="py-12 flex flex-col items-center justify-center text-center opacity-40">
-                                    <History className="w-10 h-10 mb-3 text-muted-foreground" />
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">No broadcast history yet</p>
+                                <div className="py-12 flex flex-col items-center justify-center text-center border-2 border-dashed border-border/60 rounded-xl bg-muted/20 m-4">
+                                    <History className="w-10 h-10 mb-3 text-muted-foreground opacity-50" />
+                                    <p className="text-xs font-medium text-muted-foreground">No broadcast history yet</p>
                                 </div>
                             )}
                         </div>
                     </motion.div>
                 </aside>
-
             </div>
         </div>
     );

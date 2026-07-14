@@ -1,7 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-    user: null, // Holds { id, name, email, role }
+    user: null, // Holds { id, name, email, role, profilePic, etc. }
     accessToken: null,
     isAuthenticated: false,
 };
@@ -19,6 +19,12 @@ const authSlice = createSlice({
         updateAccessToken: (state, action) => {
             state.accessToken = action.payload;
         },
+        // ✨ NEW: Add this reducer to handle profile updates
+        updateUser: (state, action) => {
+            if (state.user) {
+                state.user = { ...state.user, ...action.payload };
+            }
+        },
         logOutState: (state) => {
             state.user = null;
             state.accessToken = null;
@@ -27,6 +33,7 @@ const authSlice = createSlice({
     },
 });
 
-export const { setCredentials, updateAccessToken, logOutState } = authSlice.actions;
+// ✨ Export the new action
+export const { setCredentials, updateAccessToken, updateUser, logOutState } = authSlice.actions;
 
 export default authSlice.reducer;

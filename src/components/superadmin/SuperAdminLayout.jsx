@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     LayoutDashboard,
@@ -13,8 +13,9 @@ import {
     Users,
     Megaphone
 } from "lucide-react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { io } from "socket.io-client";
+import { toast } from "react-toastify";
 import api from "../../api/axios";
 
 export function SuperAdminLayout() {
@@ -22,6 +23,8 @@ export function SuperAdminLayout() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isProfileLoading, setIsProfileLoading] = useState(true);
     const location = useLocation();
+    const navigate = useNavigate();
+    const dispatch = useDispatch();
     const pathname = location.pathname;
 
     // ✨ GLOBAL REAL-TIME STATE
@@ -88,6 +91,21 @@ export function SuperAdminLayout() {
         };
     }, [isAuthenticated, user, fetchBaseline]);
 
+    // ✨ LOGOUT INTEGRATION
+    const handleLogout = async () => {
+        try {
+            await api.post('/auth/logout');
+            // Assuming a standard generic clear auth action, adjust to match your Redux slice
+            dispatch({ type: 'auth/logout' });
+            toast.success("Logged out successfully");
+            navigate('/'); // Redirect to a safe landing page
+            window.location.reload(); // Force clean state wipe
+        } catch (error) {
+            console.error("Logout failed:", error);
+            toast.error("Failed to log out cleanly.");
+        }
+    };
+
     // ✨ SIDEBAR NAVIGATION LINKS
     const superAdminLinks = [
         { label: "Dashboard", to: "/superadmin", icon: LayoutDashboard },
@@ -101,7 +119,7 @@ export function SuperAdminLayout() {
         <div className="flex h-full flex-col justify-between">
             <div>
                 <div className="flex h-16 items-center gap-3 px-6 border-b border-border/40">
-                    <Shield className="h-6 w-6 text-purple-600 shrink-0" />
+                    <Shield className="h-6 w-6 text-[#2A5244] shrink-0" />
                     <span className="font-serif text-xl font-bold tracking-tight text-foreground truncate">
                         Super Admin
                     </span>
@@ -113,7 +131,7 @@ export function SuperAdminLayout() {
                     </button>
                 </div>
 
-                <div className="px-6 py-5 border-b border-border/40 bg-purple-50/30">
+                <div className="px-6 py-5 border-b border-border/40 bg-[#FDFBF7]">
                     {isProfileLoading ? (
                         <div className="flex items-center gap-3">
                             <div className="h-10 w-10 shrink-0 rounded-full bg-muted relative overflow-hidden">
@@ -128,12 +146,17 @@ export function SuperAdminLayout() {
                         </div>
                     ) : (
                         <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 shrink-0 rounded-full bg-linear-to-br from-purple-700 to-purple-900 flex items-center justify-center text-white font-serif font-bold shadow-md border-2 border-white">
-                                {user?.name ? user.name.charAt(0).toUpperCase() : 'S'}
+                            {/* ✨ DYNAMIC PROFILE PIC INTEGRATION */}
+                            <div className="h-10 w-10 shrink-0 rounded-full bg-[#2A5244] flex items-center justify-center text-white font-serif font-bold shadow-sm border border-border/60 overflow-hidden">
+                                {user?.profilePic ? (
+                                    <img src={user.profilePic} alt={user.name} className="h-full w-full object-cover" />
+                                ) : (
+                                    user?.name ? user.name.charAt(0).toUpperCase() : 'S'
+                                )}
                             </div>
                             <div className="flex flex-col min-w-0">
                                 <span className="text-sm font-bold text-foreground leading-tight truncate">{user?.name || "System Owner"}</span>
-                                <span className="text-[11px] font-bold text-purple-600 truncate uppercase tracking-wider">Level 10 Access</span>
+                                <span className="text-[10px] font-black text-[#FA6D16] truncate uppercase tracking-widest mt-0.5">Level 10 Access</span>
                             </div>
                         </div>
                     )}
@@ -149,8 +172,8 @@ export function SuperAdminLayout() {
                                 to={link.to}
                                 onClick={() => setIsMobileMenuOpen(false)}
                                 className={`flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-bold transition-all ${isActive
-                                        ? "bg-purple-600 text-white shadow-md"
-                                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                                    ? "bg-[#2A5244] text-white shadow-md"
+                                    : "text-muted-foreground hover:bg-[#FDFBF7] hover:text-[#2A5244]"
                                     }`}
                             >
                                 <div className="flex items-center gap-3">
@@ -159,7 +182,7 @@ export function SuperAdminLayout() {
                                 </div>
                                 {/* ✨ LIVE PENDING BADGE */}
                                 {link.label === "Inquiries" && metrics.pendingReplies > 0 && (
-                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black transition-colors ${isActive ? 'bg-white text-purple-600' : 'bg-red-500 text-white'}`}>
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black transition-colors ${isActive ? 'bg-white text-[#FA6D16]' : 'bg-[#FA6D16] text-white shadow-sm'}`}>
                                         {metrics.pendingReplies}
                                     </span>
                                 )}
@@ -170,10 +193,14 @@ export function SuperAdminLayout() {
             </div>
 
             <div className="border-t border-border/40 p-4 space-y-2">
-                <Link to="/" className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-muted-foreground transition-all hover:bg-purple-50 hover:text-purple-700">
+                <Link to="/" className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-muted-foreground transition-all hover:bg-[#2A5244]/5 hover:text-[#2A5244]">
                     <Compass className="h-5 w-5 shrink-0" /> Launch God Mode
                 </Link>
-                <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-red-600 transition-all hover:bg-red-50 hover:text-red-700">
+                {/* ✨ ACTUAL LOGOUT HANDLER ATTACHED */}
+                <button
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-red-600 transition-all hover:bg-red-50 hover:text-red-700"
+                >
                     <LogOut className="h-5 w-5 shrink-0" /> Log out
                 </button>
             </div>
@@ -186,13 +213,13 @@ export function SuperAdminLayout() {
                 {`@keyframes shimmer { 100% { transform: translateX(100%); } }`}
             </style>
 
-            <aside className="hidden w-64 flex-col border-r border-border/40 bg-card md:flex shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10">
+            <aside className="hidden w-64 flex-col border-r border-border/40 bg-white md:flex shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10">
                 <SidebarContent />
             </aside>
 
             <div className={`fixed inset-0 z-50 transition-opacity md:hidden ${isMobileMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
                 <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
-                <aside className={`absolute top-0 left-0 h-full w-72 bg-card shadow-2xl transition-transform duration-300 ease-out flex flex-col ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}>
+                <aside className={`absolute top-0 left-0 h-full w-72 bg-white shadow-2xl transition-transform duration-300 ease-out flex flex-col ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}>
                     <SidebarContent />
                 </aside>
             </div>
@@ -204,8 +231,8 @@ export function SuperAdminLayout() {
                             <Menu className="h-6 w-6" />
                         </button>
                         <div className="flex items-center gap-2 border-l border-border/60 pl-3">
-                            <Shield className="h-5 w-5 text-purple-600" />
-                            <span className="font-serif text-lg font-bold">Super Admin</span>
+                            <Shield className="h-5 w-5 text-[#2A5244]" />
+                            <span className="font-serif text-lg font-bold text-foreground">Super Admin</span>
                         </div>
                     </div>
                 </header>
