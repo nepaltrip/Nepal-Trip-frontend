@@ -14,6 +14,7 @@ export default function CustomSelect({
     const [isOpen, setIsOpen] = useState(false);
     const [internalSelected, setInternalSelected] = useState("");
     const [dropDirection, setDropDirection] = useState("down");
+    const [dynamicMaxHeight, setDynamicMaxHeight] = useState(250);
 
     const containerRef = useRef(null);
     const triggerRef = useRef(null);
@@ -29,7 +30,6 @@ export default function CustomSelect({
 
     const currentLabel = parsedOptions.find(opt => opt.value === currentValue)?.label || currentValue;
 
-    // Handle outside clicks to close the dropdown
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (containerRef.current && !containerRef.current.contains(event.target)) {
@@ -40,18 +40,29 @@ export default function CustomSelect({
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Smart logic to open the dropdown UPWARDS if space below is limited
+    // ✨ SMART POSITIONING & DYNAMIC HEIGHT CALCULATION
     const handleToggle = () => {
         if (!isOpen && triggerRef.current) {
             const rect = triggerRef.current.getBoundingClientRect();
             const spaceBelow = window.innerHeight - rect.bottom;
+            const spaceAbove = rect.top;
 
-            // If there is less than 160px of space below the trigger, force it to drop UP
-            if (spaceBelow < 160) {
-                setDropDirection("up");
+            let direction = "down";
+            let calculatedHeight = 320; // Try to show up to ~9 items at a time
+
+            // If space below is tight (< 250px) AND there's more space above, flip it up
+            if (spaceBelow < 250 && spaceAbove > spaceBelow) {
+                direction = "up";
+                // Max height is the space above minus a 40px safe margin
+                calculatedHeight = Math.min(spaceAbove - 40, 350);
             } else {
-                setDropDirection("down");
+                direction = "down";
+                // Max height is the space below minus a 40px safe margin (prevents touching the bottom)
+                calculatedHeight = Math.min(spaceBelow - 40, 350);
             }
+
+            setDropDirection(direction);
+            setDynamicMaxHeight(calculatedHeight);
         }
         setIsOpen(!isOpen);
     };
@@ -65,7 +76,6 @@ export default function CustomSelect({
         setIsOpen(false);
     };
 
-    // Dynamic Theme Configuration
     const themeConfig = {
         orange: {
             trigger: "bg-background border-input hover:border-primary/50 text-foreground h-10 md:h-12 px-3 md:px-4",
@@ -86,12 +96,21 @@ export default function CustomSelect({
             itemHover: "hover:bg-emerald-500/20 hover:text-emerald-400",
             icon: "text-white/70",
             scrollbar: "scrollbar-thumb-emerald-500/50"
+        },
+        purple: {
+            trigger: "bg-purple-50/30 border-purple-200 hover:border-purple-400 text-foreground h-10 md:h-12 px-3 md:px-4",
+            triggerActive: "border-purple-500 ring-2 ring-purple-500/20 bg-white",
+            dropdown: "bg-white border-purple-200 shadow-xl",
+            itemBase: "text-foreground text-sm",
+            itemActive: "bg-purple-600 text-white font-bold",
+            itemHover: "hover:bg-purple-50 hover:text-purple-700",
+            icon: "text-purple-600",
+            scrollbar: "scrollbar-thumb-purple-300"
         }
     };
 
     const activeTheme = themeConfig[theme] || themeConfig.orange;
 
-    // Dynamic positioning classes based on viewport calculations (Removed Tailwind animations)
     const dropClass = dropDirection === 'up'
         ? "bottom-[calc(100%+4px)] origin-bottom"
         : "top-[calc(100%+4px)] origin-top";
@@ -112,7 +131,6 @@ export default function CustomSelect({
                 <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${activeTheme.icon} ${isOpen ? "rotate-180" : ""}`} />
             </div>
 
-            {/* ✨ Replaced raw <ul> with Framer Motion for a smooth, jerk-free transition */}
             <AnimatePresence>
                 {isOpen && (
                     <motion.ul
@@ -120,7 +138,8 @@ export default function CustomSelect({
                         animate={{ opacity: 1, y: 0, scaleY: 1 }}
                         exit={{ opacity: 0, y: dropDirection === 'up' ? 10 : -10, scaleY: 0.95 }}
                         transition={{ duration: 0.15, ease: "easeOut" }}
-                        className={`absolute z-[9999] w-full ${dropClass} border rounded-xl py-1 max-h-32 overflow-y-auto ${activeTheme.dropdown} scrollbar-thin scrollbar-track-transparent ${activeTheme.scrollbar}`}
+                        style={{ maxHeight: `${dynamicMaxHeight}px` }} // ✨ DYNAMIC HEIGHT APPLIED HERE
+                        className={`absolute z-9999 w-full ${dropClass} border rounded-xl py-1 overflow-y-auto ${activeTheme.dropdown} scrollbar-thin scrollbar-track-transparent ${activeTheme.scrollbar}`}
                     >
                         {parsedOptions.map((opt, idx) => (
                             <li

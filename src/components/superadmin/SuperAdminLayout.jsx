@@ -1,7 +1,18 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { LayoutDashboard, MessageSquare, LogOut, Menu, X, Settings, Shield, Compass, Users } from "lucide-react";
+import {
+    LayoutDashboard,
+    MessageSquare,
+    LogOut,
+    Menu,
+    X,
+    Settings,
+    Shield,
+    Compass,
+    Users,
+    Megaphone
+} from "lucide-react";
 import { useSelector } from "react-redux";
 import { io } from "socket.io-client";
 import api from "../../api/axios";
@@ -77,10 +88,12 @@ export function SuperAdminLayout() {
         };
     }, [isAuthenticated, user, fetchBaseline]);
 
+    // ✨ SIDEBAR NAVIGATION LINKS
     const superAdminLinks = [
         { label: "Dashboard", to: "/superadmin", icon: LayoutDashboard },
         { label: "Inquiries", to: "/superadmin/inquiries", icon: MessageSquare },
         { label: "User Access", to: "/superadmin/users", icon: Users },
+        { label: "Broadcast", to: "/superadmin/broadcast", icon: Megaphone },
         { label: "Global Settings", to: "/superadmin/settings", icon: Settings },
     ];
 
@@ -136,8 +149,8 @@ export function SuperAdminLayout() {
                                 to={link.to}
                                 onClick={() => setIsMobileMenuOpen(false)}
                                 className={`flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-bold transition-all ${isActive
-                                    ? "bg-purple-600 text-white shadow-md"
-                                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                                        ? "bg-purple-600 text-white shadow-md"
+                                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                                     }`}
                             >
                                 <div className="flex items-center gap-3">

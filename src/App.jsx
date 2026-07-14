@@ -17,6 +17,7 @@ import api from './api/axios';
 
 // PWA Virtual Register Hook
 import { useRegisterSW } from 'virtual:pwa-register/react';
+import { SuperAdminBroadcast } from './pages/SuperAdmin/SuperAdminBroadcast';
 
 // ==========================================
 // Web Push Utility
@@ -280,6 +281,7 @@ function App() {
             <Route index element={<SuperAdminAnalytics />} />
             <Route path="inquiries" element={<SuperAdminInquiries />} />
             <Route path="users" element={<SuperAdminUsers />} />
+            <Route path="broadcast" element={<SuperAdminBroadcast />} />
             <Route path="settings" element={<SuperAdminSettings />} />
           </Route>
           <Route path="*" element={
