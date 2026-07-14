@@ -48,17 +48,15 @@ export function Navbar({ brand = "Nepal Trip" }) {
     useEffect(() => {
         let socket;
         if (isAuthenticated && user) {
-            // FIX: Strip '/api' so Socket.IO connects to the default root namespace ('/')
             const baseUrl = import.meta.env.VITE_API_URL.replace('/api', '');
             socket = io(baseUrl, { withCredentials: true });
+            socket.on('connect', () => {
+                socket.emit('register', { id: user.id || user._id, role: user.role });
+            });
 
-            // Register user identity and role to join correct rooms
-            socket.emit('register', { id: user.id || user._id, role: user.role });
-
-            // Listen for global push alerts
             socket.on('new_notification', (notificationObject) => {
                 setUnreadIndicator(true);
-                setLatestNotification(notificationObject); // Save the incoming object
+                setLatestNotification(notificationObject);
                 toast.info(`🔔 ${notificationObject.title}`);
             });
         }
