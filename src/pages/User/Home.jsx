@@ -699,7 +699,7 @@ export default function Home() {
                     href={`https://api.whatsapp.com/send?phone=${whatsappNumber}&text=${encodeURIComponent("Hello Nepal Trip! I'm interested in planning a journey and would love some more information.")}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="fixed bottom-20 right-4 md:bottom-8 md:right-8 z-[100] bg-[#25D366] hover:bg-[#1ebd5a] text-white p-3.5 rounded-full shadow-2xl transition-all hover:scale-110 active:scale-95 flex items-center justify-center animate-in fade-in slide-in-from-bottom-4 duration-500"
+                    className="fixed bottom-20 right-4 md:bottom-8 md:right-8 z-100 bg-[#25D366] hover:bg-[#1ebd5a] text-white p-3.5 rounded-full shadow-2xl transition-all hover:scale-110 active:scale-95 flex items-center justify-center animate-in fade-in slide-in-from-bottom-4 duration-500"
                     aria-label="Chat on WhatsApp"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="currentColor" viewBox="0 0 16 16">
