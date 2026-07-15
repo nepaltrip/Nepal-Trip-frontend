@@ -11,7 +11,7 @@ import { State, City } from "country-state-city";
 import api from "../../api/axios";
 import CustomSelect from "../../components/ui/CustomSelect";
 
-export function SuperAdminBroadcast() {
+export default function SuperAdminBroadcast() {
     const { socketInstance } = useOutletContext();
 
     // --- STATE MANAGEMENT ---

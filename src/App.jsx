@@ -47,11 +47,11 @@ const AdminBroadcast = lazy(() => import('./pages/Admin/AdminBroadcast'));
 // ==========================================
 // Lazy Load Super Admin Pages
 // ==========================================
-const SuperAdminAnalytics = lazy(() => import('./pages/SuperAdmin/SuperAdminAnalytics').then(m => ({ default: m.SuperAdminAnalytics })));
-const SuperAdminInquiries = lazy(() => import('./pages/SuperAdmin/SuperAdminInquiries').then(m => ({ default: m.SuperAdminInquiries })));
-const SuperAdminUsers = lazy(() => import('./pages/SuperAdmin/SuperAdminUsers').then(m => ({ default: m.SuperAdminUsers })));
-const SuperAdminSettings = lazy(() => import('./pages/SuperAdmin/SuperAdminSettings').then(m => ({ default: m.SuperAdminSettings })));
-const SuperAdminBroadcast = lazy(() => import('./pages/SuperAdmin/SuperAdminBroadcast').then(m => ({ default: m.SuperAdminBroadcast })));
+const SuperAdminAnalytics = lazy(() => import('./pages/SuperAdmin/SuperAdminAnalytics'))
+const SuperAdminInquiries = lazy(() => import('./pages/SuperAdmin/SuperAdminInquiries'))
+const SuperAdminUsers = lazy(() => import('./pages/SuperAdmin/SuperAdminUsers'))
+const SuperAdminSettings = lazy(() => import('./pages/SuperAdmin/SuperAdminSettings'))
+const SuperAdminBroadcast = lazy(() => import('./pages/SuperAdmin/SuperAdminBroadcast'))
 
 // ==========================================
 // Web Push Utility
