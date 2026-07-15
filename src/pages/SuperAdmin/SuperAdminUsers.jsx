@@ -207,7 +207,7 @@ export default function SuperAdminUsers() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md border ${user.leadScore === 'Hot' ? 'bg-[#FA6D16]/10 text-[#FA6D16] border-[#FA6D16]/20' :
-                                                        user.leadScore === 'Spam' ? 'bg-red-100 text-red-600 border-red-200' : 'bg-blue-100 text-blue-600 border-blue-200'
+                                                    user.leadScore === 'Spam' ? 'bg-red-100 text-red-600 border-red-200' : 'bg-blue-100 text-blue-600 border-blue-200'
                                                     }`}>
                                                     {user.leadScore}
                                                 </span>
@@ -263,7 +263,7 @@ export default function SuperAdminUsers() {
                                             </div>
                                         </div>
                                         <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-md border shrink-0 ${user.leadScore === 'Hot' ? 'bg-[#FA6D16]/10 text-[#FA6D16] border-[#FA6D16]/20' :
-                                                user.leadScore === 'Spam' ? 'bg-red-100 text-red-600 border-red-200' : 'bg-blue-100 text-blue-600 border-blue-200'
+                                            user.leadScore === 'Spam' ? 'bg-red-100 text-red-600 border-red-200' : 'bg-blue-100 text-blue-600 border-blue-200'
                                             }`}>
                                             {user.leadScore}
                                         </span>
@@ -291,6 +291,7 @@ export default function SuperAdminUsers() {
             <UserDetailModal
                 isOpen={!!selectedUser}
                 onClose={() => setSelectedUser(null)}
+                viewerRole={currentUser?.role}
                 userData={selectedUser}
                 onSave={handleUserUpdate}
                 onDelete={handleUserDelete}
