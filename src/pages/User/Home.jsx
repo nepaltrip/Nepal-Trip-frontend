@@ -87,6 +87,7 @@ const GalleryMedia = ({ src, className, onError }) => {
                 muted
                 loop
                 playsInline
+                preload="none"
                 className={`${className} object-cover`}
                 onError={() => setMediaType('image')}
             />
@@ -448,10 +449,10 @@ export default function Home() {
                         </div>
                     )}
 
-                    <video ref={desktopVideoRef} autoPlay loop muted playsInline className="absolute inset-0 -z-10 h-full w-full object-cover hidden md:block opacity-40">
+                    <video ref={desktopVideoRef} autoPlay loop muted playsInline preload="none" className="absolute inset-0 -z-10 h-full w-full object-cover hidden md:block opacity-40">
                         <source src={settings.heroVideoUrl || defaultSettings.heroVideoUrl} type="video/mp4" />
                     </video>
-                    <video ref={mobileVideoRef} autoPlay loop muted playsInline className="absolute inset-0 -z-10 h-full w-full object-cover block md:hidden opacity-40">
+                    <video ref={mobileVideoRef} autoPlay loop muted playsInline preload="none" className="absolute inset-0 -z-10 h-full w-full object-cover block md:hidden opacity-40">
                         <source src={settings.heroVideoMobileUrl || defaultSettings.heroVideoMobileUrl} type="video/mp4" />
                     </video>
                     <div className="absolute inset-0 -z-10 bg-linear-to-b from-black/60 via-transparent to-black/80" />
@@ -502,7 +503,7 @@ export default function Home() {
                             {settings.whyUsCards.map((card, idx) => (
                                 <div key={card._id || idx} className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm hover:shadow-md transition-shadow relative group">
                                     {isSuperAdmin && !isMobile && (
-                                        <button onClick={() => handleDeleteWhyUsCard(idx)} className="absolute top-4 right-4 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onClick={() => handleDeleteWhyUsCard(idx)} aria-label="Delete feature card" className="absolute top-4 right-4 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <Trash2 className="h-4 w-4" />
                                         </button>
                                     )}
@@ -612,7 +613,7 @@ export default function Home() {
                                 {testimonials.map((t) => (
                                     <blockquote key={t._id} className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm hover:shadow-md transition-shadow relative group">
                                         {isSuperAdmin && !isMobile && (
-                                            <button onClick={() => handleDeleteTestimonial(t._id)} className="absolute top-4 right-4 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                            <button onClick={() => handleDeleteTestimonial(t._id)} aria-label="Delete review" className="absolute top-4 right-4 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                                                 <Trash2 className="h-4 w-4" />
                                             </button>
                                         )}

@@ -221,7 +221,7 @@ export function Navbar({ brand = "Nepal Trip" }) {
                         </button>
 
                         {isAuthenticated && (
-                            <button onClick={() => setIsNotificationOpen(true)} className="relative flex h-8 w-8 items-center justify-center rounded-full border border-border/30 text-foreground bg-background/50 hover:bg-muted transition-all">
+                            <button onClick={() => setIsNotificationOpen(true)} aria-label="Open notifications" className="relative flex h-8 w-8 items-center justify-center rounded-full border border-border/30 text-foreground bg-background/50 hover:bg-muted transition-all">
                                 <Bell className="h-4 w-4" />
                                 {unreadIndicator && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />}
                             </button>
@@ -297,7 +297,7 @@ export function Navbar({ brand = "Nepal Trip" }) {
                                 <div className="flex md:hidden items-center ml-1">
                                     <LoginModal
                                         trigger={
-                                            <button className="flex h-8 w-8 items-center justify-center rounded-full border border-border/30 bg-background/50 text-foreground hover:bg-muted transition-all">
+                                            <button aria-label="Open location selector" className="flex h-8 w-8 items-center justify-center rounded-full border border-border/30 bg-background/50 text-foreground hover:bg-muted transition-all">
                                                 <User className="h-4 w-4" />
                                             </button>
                                         }
