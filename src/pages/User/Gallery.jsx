@@ -8,6 +8,7 @@ import api from "../../api/axios";
 import { toast } from "react-toastify";
 import { InlineEditor } from "../../components/admin/InlineEditor";
 import { useSearchParams } from "react-router-dom";
+import SEO from "../../components/site/SEO";
 
 // --- Helper to generate local thumbnail for upload preview ---
 const generateLocalVideoThumbnail = (file) => {
@@ -479,7 +480,6 @@ export default function Gallery() {
     const [deletingId, setDeletingId] = useState(null);
     const hiddenFileInputRef = useRef(null);
 
-
     // --- Master Tracker Function (10-Minute LocalStorage Throttle) ---
     const handleRegisterView = async (item) => {
         try {
@@ -530,7 +530,6 @@ export default function Gallery() {
         if (headerRef.current) observer.observe(headerRef.current);
         return () => observer.disconnect();
     }, []);
-
 
     const fetchGallery = async (currentPage = 1, isNewSearch = false) => {
         if (currentPage === 1) setIsLoading(true);
@@ -635,142 +634,151 @@ export default function Gallery() {
     };
 
     return (
-        <div className="w-full min-h-screen bg-background flex flex-col relative overflow-hidden">
-            <input type="file" ref={hiddenFileInputRef} className="hidden" accept="video/*,image/*" onChange={handleFileChangeAndUploadInitiation} />
+        <>
+            {/* ✨ NEW SEO COMPONENT ✨ */}
+            <SEO
+                title="Travel Media Gallery | Nepal Trip"
+                description="Browse our collection of photos and videos from Nepal. See the stunning Himalayas, rich culture, and beautiful landscapes."
+                url="https://nepaltrip.in/gallery"
+            />
 
-            <AnimatePresence>
-                {!isHeaderVisible && isMobile && (
-                    <motion.div initial={{ y: -100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -100, opacity: 0 }} className="fixed top-6 left-1/2 -translate-x-1/2 z-60 flex bg-black/80 backdrop-blur-md p-1.5 rounded-full border border-white/20 shadow-2xl">
-                        <button onClick={() => setMobileViewMode("grid")} className={`p-2 rounded-full transition-all ${mobileViewMode === "grid" ? "bg-[#FA6D16] text-white shadow-md" : "text-white/60 hover:text-white"}`}><LayoutGrid size={18} /></button>
-                        <button onClick={() => setMobileViewMode("swipe")} className={`p-2 rounded-full transition-all ${mobileViewMode === "swipe" ? "bg-[#FA6D16] text-white shadow-md" : "text-white/60 hover:text-white"}`}><GalleryVerticalEnd size={18} /></button>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            <div className="w-full min-h-screen bg-background flex flex-col relative overflow-hidden">
+                <input type="file" ref={hiddenFileInputRef} className="hidden" accept="video/*,image/*" onChange={handleFileChangeAndUploadInitiation} />
 
-            <div ref={headerRef} className="sticky top-0 z-40 w-full bg-background/90 backdrop-blur-xl border-b border-border/40 py-3 px-4 md:py-4 md:px-8 shadow-sm">
                 <AnimatePresence>
-                    {isMobileSearchOpen && isMobile && (
-                        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="absolute inset-0 z-50 bg-background/95 backdrop-blur-xl flex items-center px-4 gap-3 border-b border-border/40">
-                            <div className="relative flex-1"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><Input autoFocus placeholder="Search locations..." className="pl-9 h-10 text-sm rounded-full w-full border-[#FA6D16]/50 focus-visible:ring-[#FA6D16]" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
-                            <button onClick={() => setIsMobileSearchOpen(false)} className="p-2.5 bg-muted rounded-full text-foreground"><X size={16} /></button>
+                    {!isHeaderVisible && isMobile && (
+                        <motion.div initial={{ y: -100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -100, opacity: 0 }} className="fixed top-6 left-1/2 -translate-x-1/2 z-60 flex bg-black/80 backdrop-blur-md p-1.5 rounded-full border border-white/20 shadow-2xl">
+                            <button onClick={() => setMobileViewMode("grid")} className={`p-2 rounded-full transition-all ${mobileViewMode === "grid" ? "bg-[#FA6D16] text-white shadow-md" : "text-white/60 hover:text-white"}`}><LayoutGrid size={18} /></button>
+                            <button onClick={() => setMobileViewMode("swipe")} className={`p-2 rounded-full transition-all ${mobileViewMode === "swipe" ? "bg-[#FA6D16] text-white shadow-md" : "text-white/60 hover:text-white"}`}><GalleryVerticalEnd size={18} /></button>
                         </motion.div>
                     )}
                 </AnimatePresence>
 
-                <div className="max-w-[1800px] mx-auto flex items-center justify-between gap-5">
-                    <div>
-                        <h1 className="text-xl md:text-2xl font-black text-foreground uppercase tracking-tight leading-none">Gallery</h1>
-                        <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest mt-1">{totalItems} {totalItems === 1 ? 'Capture' : 'Captured'}</p>
-                    </div>
-
-                    <div className="hidden md:block flex-1 max-w-lg relative group/search">
-                        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within/search:text-[#FA6D16] transition-colors duration-300" />
-                        <Input placeholder="Search locations..." className="pl-11 bg-white border border-gray-200 focus-visible:ring-1 focus-visible:border-[#FA6D16] rounded-full h-12 w-full text-sm font-medium shadow-sm" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        <div className="hidden md:flex bg-[#FA6D16]/5 p-1.5 rounded-full border border-[#FA6D16]/20 shadow-sm">
-                            <button onClick={() => setSortConfig({ key: 'createdAt', order: sortConfig.order === 'desc' ? 'asc' : 'desc' })} className={`flex items-center gap-1.5 px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider ${sortConfig.key === 'createdAt' ? 'bg-[#FA6D16] text-white shadow-md' : 'text-[#FA6D16]/80 hover:bg-[#FA6D16]/10'}`}>Recent {sortConfig.key === 'createdAt' && (sortConfig.order === 'desc' ? <ArrowDown size={14} /> : <ArrowUp size={14} />)}</button>
-                            <button onClick={() => { if (sortConfig.key !== 'views') setSortConfig({ key: 'views', order: 'desc' }) }} className={`flex items-center gap-1.5 px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider ${sortConfig.key === 'views' ? 'bg-[#FA6D16] text-white shadow-md' : 'text-[#FA6D16]/80 hover:bg-[#FA6D16]/10'}`}><Eye size={14} /> Views</button>
-                        </div>
-
-                        <div className="flex md:hidden items-center gap-2 relative">
-                            <button onClick={() => setIsMobileSearchOpen(true)} className="w-9 h-9 flex items-center justify-center rounded-full border shadow-sm bg-card border-border text-foreground hover:bg-muted transition-colors"><Search size={16} /></button>
-
-                            <div className="flex bg-muted/50 p-1 rounded-full border border-border/50">
-                                <button onClick={() => setMobileViewMode("grid")} className={`p-1.5 rounded-full transition-all ${mobileViewMode === "grid" ? "bg-white shadow-sm text-[#FA6D16]" : "text-muted-foreground hover:text-foreground"}`}><LayoutGrid size={16} /></button>
-                                <button onClick={() => setMobileViewMode("swipe")} className={`p-1.5 rounded-full transition-all ${mobileViewMode === "swipe" ? "bg-white shadow-sm text-[#FA6D16]" : "text-muted-foreground hover:text-foreground"}`}><GalleryVerticalEnd size={16} /></button>
-                            </div>
-                        </div>
-
-                        {isSuperAdmin && !isMobile && (
-                            <button onClick={handleInstantBrowseTrigger} className="shrink-0 flex items-center justify-center px-6 py-2.5 bg-[#FA6D16] hover:bg-[#E55B05] text-white rounded-full font-black text-xs uppercase tracking-wider shadow-lg active:scale-95"><Plus size={16} className="mr-2" /> Upload</button>
+                <div ref={headerRef} className="sticky top-0 z-40 w-full bg-background/90 backdrop-blur-xl border-b border-border/40 py-3 px-4 md:py-4 md:px-8 shadow-sm">
+                    <AnimatePresence>
+                        {isMobileSearchOpen && isMobile && (
+                            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="absolute inset-0 z-50 bg-background/95 backdrop-blur-xl flex items-center px-4 gap-3 border-b border-border/40">
+                                <div className="relative flex-1"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><Input autoFocus placeholder="Search locations..." className="pl-9 h-10 text-sm rounded-full w-full border-[#FA6D16]/50 focus-visible:ring-[#FA6D16]" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
+                                <button onClick={() => setIsMobileSearchOpen(false)} className="p-2.5 bg-muted rounded-full text-foreground"><X size={16} /></button>
+                            </motion.div>
                         )}
-                    </div>
-                </div>
-            </div>
+                    </AnimatePresence>
 
-            <div className="w-full max-w-[1800px] mx-auto px-4 md:px-8">
-                <AnimatePresence>
-                    {uploadState.isUploading && (
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.9, height: 0 }}
-                            animate={{ opacity: 1, scale: 1, height: 'auto' }}
-                            exit={{ opacity: 0, scale: 0.9, height: 0 }}
-                            className="relative mb-6 rounded-2xl overflow-hidden bg-black/10 shadow-2xl min-h-37.5 md:min-h-75 mt-6 border border-[#FA6D16]/30 flex flex-col items-center justify-center"
-                        >
-                            <div className="absolute inset-0 z-0 bg-cover bg-center transition-all duration-300 pointer-events-none" style={{ backgroundImage: `url(${uploadState.preview})`, filter: `blur(${Math.max(0, 20 - (uploadState.progress / 5))}px) brightness(0.5)` }} />
-                            <div className="absolute bottom-0 left-0 w-full bg-[#FA6D16]/70 backdrop-blur-sm z-10" style={{ height: `${uploadState.progress}%` }} />
-                            <div className="relative z-20 flex flex-col items-center gap-2 md:gap-4 mt-6 mb-6">
-                                <div className="text-white text-3xl md:text-5xl font-black drop-shadow-2xl flex items-baseline">{uploadState.progress}<span className="text-lg md:text-xl">%</span></div>
-                                <button onClick={cancelUpload} className="mt-2 bg-white/20 hover:bg-red-500 text-white p-2 md:p-3 rounded-full backdrop-blur-md border border-white/20 shadow-2xl"><X size={16} /></button>
+                    <div className="max-w-[1800px] mx-auto flex items-center justify-between gap-5">
+                        <div>
+                            <h1 className="text-xl md:text-2xl font-black text-foreground uppercase tracking-tight leading-none">Gallery</h1>
+                            <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest mt-1">{totalItems} {totalItems === 1 ? 'Capture' : 'Captured'}</p>
+                        </div>
+
+                        <div className="hidden md:block flex-1 max-w-lg relative group/search">
+                            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within/search:text-[#FA6D16] transition-colors duration-300" />
+                            <Input placeholder="Search locations..." className="pl-11 bg-white border border-gray-200 focus-visible:ring-1 focus-visible:border-[#FA6D16] rounded-full h-12 w-full text-sm font-medium shadow-sm" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <div className="hidden md:flex bg-[#FA6D16]/5 p-1.5 rounded-full border border-[#FA6D16]/20 shadow-sm">
+                                <button onClick={() => setSortConfig({ key: 'createdAt', order: sortConfig.order === 'desc' ? 'asc' : 'desc' })} className={`flex items-center gap-1.5 px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider ${sortConfig.key === 'createdAt' ? 'bg-[#FA6D16] text-white shadow-md' : 'text-[#FA6D16]/80 hover:bg-[#FA6D16]/10'}`}>Recent {sortConfig.key === 'createdAt' && (sortConfig.order === 'desc' ? <ArrowDown size={14} /> : <ArrowUp size={14} />)}</button>
+                                <button onClick={() => { if (sortConfig.key !== 'views') setSortConfig({ key: 'views', order: 'desc' }) }} className={`flex items-center gap-1.5 px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider ${sortConfig.key === 'views' ? 'bg-[#FA6D16] text-white shadow-md' : 'text-[#FA6D16]/80 hover:bg-[#FA6D16]/10'}`}><Eye size={14} /> Views</button>
                             </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
 
-            {/* --- GRID VIEW --- */}
-            <div className={`${mobileViewMode === 'grid' || !isMobile ? 'block' : 'hidden'} w-full max-w-[1800px] mx-auto px-4 md:px-8 pb-16 pt-6`}>
-                <div className="columns-1 sm:columns-[14rem] lg:columns-[22rem] xl:columns-[26rem] gap-4 md:gap-6 space-y-4 md:space-y-6">
-                    {mediaItems.map((item, index) => (
-                        <MasonryCard
-                            key={item._id} item={item} index={index % 15} activeGodMode={isSuperAdmin} setDeletingId={setDeletingId} onUpdate={handleUpdateField} onClick={(item) => setSelectedMedia(item)} isGlobalMuted={isGlobalMuted} setIsGlobalMuted={setIsGlobalMuted} isMobile={isMobile} activeVideoId={activeVideoId} setActiveVideoId={setActiveVideoId} onRegisterView={handleRegisterView}
-                        />
-                    ))}
+                            <div className="flex md:hidden items-center gap-2 relative">
+                                <button onClick={() => setIsMobileSearchOpen(true)} className="w-9 h-9 flex items-center justify-center rounded-full border shadow-sm bg-card border-border text-foreground hover:bg-muted transition-colors"><Search size={16} /></button>
 
-                    {/* NEW: YouTube-Style Masonry Shimmer skeletons replacing the old spinner */}
-                    {(isLoading || isFetchingMore) && [300, 450, 250, 350, 400].map((h, i) => (
-                        <div key={`shimmer-grid-${i}`} className="w-full break-inside-avoid mb-4 md:mb-6 rounded-xl md:rounded-2xl bg-muted/30 dark:bg-zinc-800/40 animate-pulse" style={{ height: `${h}px` }} />
-                    ))}
-                </div>
-
-                {hasMore && <div ref={mobileViewMode === 'grid' || !isMobile ? observerTarget : null} className="w-full py-4 flex justify-center items-center"></div>}
-            </div>
-
-            {/* --- MOBILE SWIPE VIEW --- */}
-            <div className={`${mobileViewMode === 'swipe' && isMobile ? 'flex' : 'hidden'} w-full flex-col overflow-y-scroll snap-y snap-mandatory h-[calc(100dvh-4.5rem)] bg-black mt-0 scrollbar-none`}>
-                {mediaItems.map((item) => (
-                    <MobileSwipeCard key={item._id} item={item} isGlobalMuted={isGlobalMuted} setIsGlobalMuted={setIsGlobalMuted} onRegisterView={handleRegisterView} />
-                ))}
-
-                {hasMore && (
-                    <div ref={mobileViewMode === 'swipe' && isMobile ? observerTarget : null} className="w-full shrink-0 snap-start bg-black">
-                        {/* NEW: YouTube-Style Fullscreen Swipe Shimmer skeleton replacing the old spinner */}
-                        {(isLoading || isFetchingMore) ? (
-                            <div className="w-full h-[calc(100dvh-4.5rem)] relative flex items-center justify-center overflow-hidden animate-pulse bg-zinc-900/20">
-                                <div className="absolute top-6 left-6 w-24 h-8 bg-zinc-800/80 rounded-full"></div>
-                                <div className="absolute top-6 right-6 flex flex-col gap-4">
-                                    <div className="w-11 h-11 bg-zinc-800/80 rounded-full"></div>
-                                    <div className="w-11 h-11 bg-zinc-800/80 rounded-full"></div>
-                                    <div className="w-11 h-11 bg-zinc-800/80 rounded-full"></div>
+                                <div className="flex bg-muted/50 p-1 rounded-full border border-border/50">
+                                    <button onClick={() => setMobileViewMode("grid")} className={`p-1.5 rounded-full transition-all ${mobileViewMode === "grid" ? "bg-white shadow-sm text-[#FA6D16]" : "text-muted-foreground hover:text-foreground"}`}><LayoutGrid size={16} /></button>
+                                    <button onClick={() => setMobileViewMode("swipe")} className={`p-1.5 rounded-full transition-all ${mobileViewMode === "swipe" ? "bg-white shadow-sm text-[#FA6D16]" : "text-muted-foreground hover:text-foreground"}`}><GalleryVerticalEnd size={16} /></button>
                                 </div>
                             </div>
-                        ) : (
-                            <div className="h-32 w-full bg-transparent"></div>
+
+                            {isSuperAdmin && !isMobile && (
+                                <button onClick={handleInstantBrowseTrigger} className="shrink-0 flex items-center justify-center px-6 py-2.5 bg-[#FA6D16] hover:bg-[#E55B05] text-white rounded-full font-black text-xs uppercase tracking-wider shadow-lg active:scale-95"><Plus size={16} className="mr-2" /> Upload</button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="w-full max-w-[1800px] mx-auto px-4 md:px-8">
+                    <AnimatePresence>
+                        {uploadState.isUploading && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9, height: 0 }}
+                                animate={{ opacity: 1, scale: 1, height: 'auto' }}
+                                exit={{ opacity: 0, scale: 0.9, height: 0 }}
+                                className="relative mb-6 rounded-2xl overflow-hidden bg-black/10 shadow-2xl min-h-37.5 md:min-h-75 mt-6 border border-[#FA6D16]/30 flex flex-col items-center justify-center"
+                            >
+                                <div className="absolute inset-0 z-0 bg-cover bg-center transition-all duration-300 pointer-events-none" style={{ backgroundImage: `url(${uploadState.preview})`, filter: `blur(${Math.max(0, 20 - (uploadState.progress / 5))}px) brightness(0.5)` }} />
+                                <div className="absolute bottom-0 left-0 w-full bg-[#FA6D16]/70 backdrop-blur-sm z-10" style={{ height: `${uploadState.progress}%` }} />
+                                <div className="relative z-20 flex flex-col items-center gap-2 md:gap-4 mt-6 mb-6">
+                                    <div className="text-white text-3xl md:text-5xl font-black drop-shadow-2xl flex items-baseline">{uploadState.progress}<span className="text-lg md:text-xl">%</span></div>
+                                    <button onClick={cancelUpload} className="mt-2 bg-white/20 hover:bg-red-500 text-white p-2 md:p-3 rounded-full backdrop-blur-md border border-white/20 shadow-2xl"><X size={16} /></button>
+                                </div>
+                            </motion.div>
                         )}
+                    </AnimatePresence>
+                </div>
+
+                {/* --- GRID VIEW --- */}
+                <div className={`${mobileViewMode === 'grid' || !isMobile ? 'block' : 'hidden'} w-full max-w-[1800px] mx-auto px-4 md:px-8 pb-16 pt-6`}>
+                    <div className="columns-1 sm:columns-[14rem] lg:columns-[22rem] xl:columns-[26rem] gap-4 md:gap-6 space-y-4 md:space-y-6">
+                        {mediaItems.map((item, index) => (
+                            <MasonryCard
+                                key={item._id} item={item} index={index % 15} activeGodMode={isSuperAdmin} setDeletingId={setDeletingId} onUpdate={handleUpdateField} onClick={(item) => setSelectedMedia(item)} isGlobalMuted={isGlobalMuted} setIsGlobalMuted={setIsGlobalMuted} isMobile={isMobile} activeVideoId={activeVideoId} setActiveVideoId={setActiveVideoId} onRegisterView={handleRegisterView}
+                            />
+                        ))}
+
+                        {/* NEW: YouTube-Style Masonry Shimmer skeletons replacing the old spinner */}
+                        {(isLoading || isFetchingMore) && [300, 450, 250, 350, 400].map((h, i) => (
+                            <div key={`shimmer-grid-${i}`} className="w-full break-inside-avoid mb-4 md:mb-6 rounded-xl md:rounded-2xl bg-muted/30 dark:bg-zinc-800/40 animate-pulse" style={{ height: `${h}px` }} />
+                        ))}
                     </div>
-                )}
+
+                    {hasMore && <div ref={mobileViewMode === 'grid' || !isMobile ? observerTarget : null} className="w-full py-4 flex justify-center items-center"></div>}
+                </div>
+
+                {/* --- MOBILE SWIPE VIEW --- */}
+                <div className={`${mobileViewMode === 'swipe' && isMobile ? 'flex' : 'hidden'} w-full flex-col overflow-y-scroll snap-y snap-mandatory h-[calc(100dvh-4.5rem)] bg-black mt-0 scrollbar-none`}>
+                    {mediaItems.map((item) => (
+                        <MobileSwipeCard key={item._id} item={item} isGlobalMuted={isGlobalMuted} setIsGlobalMuted={setIsGlobalMuted} onRegisterView={handleRegisterView} />
+                    ))}
+
+                    {hasMore && (
+                        <div ref={mobileViewMode === 'swipe' && isMobile ? observerTarget : null} className="w-full shrink-0 snap-start bg-black">
+                            {/* NEW: YouTube-Style Fullscreen Swipe Shimmer skeleton replacing the old spinner */}
+                            {(isLoading || isFetchingMore) ? (
+                                <div className="w-full h-[calc(100dvh-4.5rem)] relative flex items-center justify-center overflow-hidden animate-pulse bg-zinc-900/20">
+                                    <div className="absolute top-6 left-6 w-24 h-8 bg-zinc-800/80 rounded-full"></div>
+                                    <div className="absolute top-6 right-6 flex flex-col gap-4">
+                                        <div className="w-11 h-11 bg-zinc-800/80 rounded-full"></div>
+                                        <div className="w-11 h-11 bg-zinc-800/80 rounded-full"></div>
+                                        <div className="w-11 h-11 bg-zinc-800/80 rounded-full"></div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="h-32 w-full bg-transparent"></div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                <AnimatePresence>
+                    {selectedMedia && <Lightbox item={selectedMedia} onClose={() => setSelectedMedia(null)} activeGodMode={isSuperAdmin} onUpdate={handleUpdateField} isGlobalMuted={isGlobalMuted} setIsGlobalMuted={setIsGlobalMuted} onRegisterView={handleRegisterView} />}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                    {deletingId && (
+                        <div className="fixed inset-0 z-200 flex items-center justify-center bg-black/65 backdrop-blur-md p-4" onClick={() => setDeletingId(null)}>
+                            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-zinc-900 border border-white/10 rounded-3xl max-w-sm w-full p-8 text-center shadow-2xl text-white" onClick={e => e.stopPropagation()}>
+                                <div className="mx-auto w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center text-red-500 mb-6"><AlertTriangle size={32} /></div>
+                                <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight mb-3">Wipe Content?</h3>
+                                <div className="flex gap-4 mt-8">
+                                    <Button variant="outline" className="w-full rounded-xl bg-transparent border-white/20 text-white" onClick={() => setDeletingId(null)}>Cancel</Button>
+                                    <Button className="w-full rounded-xl bg-red-500 hover:bg-red-600 text-white border-none" onClick={confirmWipeItem}>Delete</Button>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>
             </div>
-
-            <AnimatePresence>
-                {selectedMedia && <Lightbox item={selectedMedia} onClose={() => setSelectedMedia(null)} activeGodMode={isSuperAdmin} onUpdate={handleUpdateField} isGlobalMuted={isGlobalMuted} setIsGlobalMuted={setIsGlobalMuted} onRegisterView={handleRegisterView} />}
-            </AnimatePresence>
-
-            <AnimatePresence>
-                {deletingId && (
-                    <div className="fixed inset-0 z-200 flex items-center justify-center bg-black/65 backdrop-blur-md p-4" onClick={() => setDeletingId(null)}>
-                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-zinc-900 border border-white/10 rounded-3xl max-w-sm w-full p-8 text-center shadow-2xl text-white" onClick={e => e.stopPropagation()}>
-                            <div className="mx-auto w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center text-red-500 mb-6"><AlertTriangle size={32} /></div>
-                            <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight mb-3">Wipe Content?</h3>
-                            <div className="flex gap-4 mt-8">
-                                <Button variant="outline" className="w-full rounded-xl bg-transparent border-white/20 text-white" onClick={() => setDeletingId(null)}>Cancel</Button>
-                                <Button className="w-full rounded-xl bg-red-500 hover:bg-red-600 text-white border-none" onClick={confirmWipeItem}>Delete</Button>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
-        </div>
+        </>
     );
 }

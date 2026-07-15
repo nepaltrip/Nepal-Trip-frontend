@@ -9,6 +9,7 @@ import { InlineEditor } from "../../components/admin/InlineEditor";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../../api/axios";
+import SEO from "../../components/site/SEO";
 
 // --- Default Configuration (Form building elements completely removed) ---
 const defaultSettings = {
@@ -43,7 +44,7 @@ export default function Contact() {
     const [isResetting, setIsResetting] = useState(false);
 
     useEffect(() => {
-        document.title = "Contact — NepalTrip";
+        // ✨ REMOVED document.title from here
         const timer = setTimeout(() => setIsMounted(true), 50);
 
         const fetchContactContent = async () => {
@@ -155,147 +156,156 @@ export default function Contact() {
     );
 
     return (
-        <div className={`w-full transition-all duration-1000 ease-out transform ${isMounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-            <div className="w-full bg-background min-h-[calc(100dvh-4rem)] py-12 md:py-20 font-sans relative">
-                <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+        <>
+            {/* ✨ NEW SEO COMPONENT ✨ */}
+            <SEO
+                title={`${settings.page_title || "Contact Us"} | Nepal Trip`}
+                description={settings.page_subtitle || "Get in touch with Nepal Trip to plan your ultimate Himalayan journey."}
+                url="https://nepaltrip.in/contact"
+            />
 
-                    <div className="text-center mb-16">
-                        <p className="font-serif text-xs uppercase tracking-widest text-primary mb-3 font-bold">
-                            {renderEditableText("page_tagline")}
-                        </p>
-                        <h1 className="font-serif text-4xl sm:text-6xl font-bold text-foreground">
-                            {renderEditableText("page_title")}
-                        </h1>
-                        <p className="mt-4 text-muted-foreground text-lg max-w-xl mx-auto">
-                            {renderEditableText("page_subtitle", "textarea")}
-                        </p>
-                    </div>
+            <div className={`w-full transition-all duration-1000 ease-out transform ${isMounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+                <div className="w-full bg-background min-h-[calc(100dvh-4rem)] py-12 md:py-20 font-sans relative">
+                    <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
 
-                    <div className="grid gap-12 lg:grid-cols-12 items-start">
-                        {/* Contact Details Card */}
-                        <div className="lg:col-span-5 space-y-8">
-                            <div className="bg-card p-8 rounded-3xl border border-border/50 shadow-sm hover:shadow-md transition-shadow">
-                                <h3 className="font-serif text-2xl font-bold mb-6 text-foreground">Contact Details</h3>
-                                <div className="space-y-6">
-
-                                    <a href={`mailto:${settings.contact_email}`} className="flex items-start gap-4 group">
-                                        <div className="p-3 shrink-0 bg-primary/10 text-primary rounded-xl group-hover:bg-primary group-hover:text-white transition-colors shadow-sm">
-                                            <Mail className="h-5 w-5" />
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Email Us</p>
-                                            <p className="text-foreground font-medium">{renderEditableText("contact_email")}</p>
-                                        </div>
-                                    </a>
-
-                                    <a href={`tel:${settings.contact_phone.replace(/[^0-9+]/g, '')}`} className="flex items-start gap-4 group">
-                                        <div className="p-3 shrink-0 bg-primary/10 text-primary rounded-xl group-hover:bg-primary group-hover:text-white transition-colors shadow-sm">
-                                            <Phone className="h-5 w-5" />
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Call Us</p>
-                                            <p className="text-foreground font-medium">{renderEditableText("contact_phone")}</p>
-                                        </div>
-                                    </a>
-
-                                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(settings.contact_address)}`} target="_blank" rel="noopener noreferrer" className="flex items-start gap-4 group">
-                                        <div className="p-3 shrink-0 bg-primary/10 text-primary rounded-xl group-hover:bg-primary group-hover:text-white transition-colors shadow-sm">
-                                            <MapPin className="h-5 w-5" />
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Our Office</p>
-                                            <p className="text-foreground font-medium">{renderEditableText("contact_address")}</p>
-                                        </div>
-                                    </a>
-
-                                </div>
-                            </div>
+                        <div className="text-center mb-16">
+                            <p className="font-serif text-xs uppercase tracking-widest text-primary mb-3 font-bold">
+                                {renderEditableText("page_tagline")}
+                            </p>
+                            <h1 className="font-serif text-4xl sm:text-6xl font-bold text-foreground">
+                                {renderEditableText("page_title")}
+                            </h1>
+                            <p className="mt-4 text-muted-foreground text-lg max-w-xl mx-auto">
+                                {renderEditableText("page_subtitle", "textarea")}
+                            </p>
                         </div>
 
-                        {/* Standardized Form (Matches Inquiry Dialog Fields) */}
-                        <motion.form
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true }}
-                            onSubmit={onSubmit}
-                            className="lg:col-span-7 space-y-4 bg-card p-8 md:p-10 rounded-3xl border border-border/50 shadow-xl"
-                        >
-                            <div className="grid gap-2">
-                                <Label htmlFor="name" className="text-sm font-medium">Full name <span className="text-primary">*</span></Label>
-                                <Input id="name" name="name" required placeholder="John Doe" className="h-11 rounded-2xl transition-all hover:border-[#FA6D16]/50 focus:border-[#FA6D16] focus-visible:ring-[#FA6D16]/20" />
+                        <div className="grid gap-12 lg:grid-cols-12 items-start">
+                            {/* Contact Details Card */}
+                            <div className="lg:col-span-5 space-y-8">
+                                <div className="bg-card p-8 rounded-3xl border border-border/50 shadow-sm hover:shadow-md transition-shadow">
+                                    <h3 className="font-serif text-2xl font-bold mb-6 text-foreground">Contact Details</h3>
+                                    <div className="space-y-6">
+
+                                        <a href={`mailto:${settings.contact_email}`} className="flex items-start gap-4 group">
+                                            <div className="p-3 shrink-0 bg-primary/10 text-primary rounded-xl group-hover:bg-primary group-hover:text-white transition-colors shadow-sm">
+                                                <Mail className="h-5 w-5" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Email Us</p>
+                                                <p className="text-foreground font-medium">{renderEditableText("contact_email")}</p>
+                                            </div>
+                                        </a>
+
+                                        <a href={`tel:${settings.contact_phone.replace(/[^0-9+]/g, '')}`} className="flex items-start gap-4 group">
+                                            <div className="p-3 shrink-0 bg-primary/10 text-primary rounded-xl group-hover:bg-primary group-hover:text-white transition-colors shadow-sm">
+                                                <Phone className="h-5 w-5" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Call Us</p>
+                                                <p className="text-foreground font-medium">{renderEditableText("contact_phone")}</p>
+                                            </div>
+                                        </a>
+
+                                        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(settings.contact_address)}`} target="_blank" rel="noopener noreferrer" className="flex items-start gap-4 group">
+                                            <div className="p-3 shrink-0 bg-primary/10 text-primary rounded-xl group-hover:bg-primary group-hover:text-white transition-colors shadow-sm">
+                                                <MapPin className="h-5 w-5" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Our Office</p>
+                                                <p className="text-foreground font-medium">{renderEditableText("contact_address")}</p>
+                                            </div>
+                                        </a>
+
+                                    </div>
+                                </div>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {/* Standardized Form (Matches Inquiry Dialog Fields) */}
+                            <motion.form
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                onSubmit={onSubmit}
+                                className="lg:col-span-7 space-y-4 bg-card p-8 md:p-10 rounded-3xl border border-border/50 shadow-xl"
+                            >
                                 <div className="grid gap-2">
-                                    <Label htmlFor="email" className="text-sm font-medium">Email <span className="text-primary">*</span></Label>
-                                    <Input id="email" name="email" type="email" required placeholder="john@example.com" className="h-11 rounded-2xl transition-all hover:border-[#FA6D16]/50 focus:border-[#FA6D16] focus-visible:ring-[#FA6D16]/20" />
+                                    <Label htmlFor="name" className="text-sm font-medium">Full name <span className="text-primary">*</span></Label>
+                                    <Input id="name" name="name" required placeholder="John Doe" className="h-11 rounded-2xl transition-all hover:border-[#FA6D16]/50 focus:border-[#FA6D16] focus-visible:ring-[#FA6D16]/20" />
                                 </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="phone" className="text-sm font-medium">Phone</Label>
-                                    <Input id="phone" name="phone" type="tel" placeholder="+1 (555) 000-0000" className="h-11 rounded-2xl transition-all hover:border-[#FA6D16]/50 focus:border-[#FA6D16] focus-visible:ring-[#FA6D16]/20" />
-                                </div>
-                            </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="grid gap-2">
-                                    <Label htmlFor="travel_date" className="text-sm font-medium">Travel date</Label>
-                                    <Input id="travel_date" name="travel_date" type="date" className="h-11 rounded-2xl transition-all hover:border-[#FA6D16]/50 focus:border-[#FA6D16] focus-visible:ring-[#FA6D16]/20" />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="email" className="text-sm font-medium">Email <span className="text-primary">*</span></Label>
+                                        <Input id="email" name="email" type="email" required placeholder="john@example.com" className="h-11 rounded-2xl transition-all hover:border-[#FA6D16]/50 focus:border-[#FA6D16] focus-visible:ring-[#FA6D16]/20" />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="phone" className="text-sm font-medium">Phone</Label>
+                                        <Input id="phone" name="phone" type="tel" placeholder="+1 (555) 000-0000" className="h-11 rounded-2xl transition-all hover:border-[#FA6D16]/50 focus:border-[#FA6D16] focus-visible:ring-[#FA6D16]/20" />
+                                    </div>
                                 </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="travelers" className="text-sm font-medium">Travelers</Label>
-                                    <Input id="travelers" name="travelers" type="number" min={1} defaultValue={2} className="h-11 rounded-2xl transition-all hover:border-[#FA6D16]/50 focus:border-[#FA6D16] focus-visible:ring-[#FA6D16]/20" />
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="travel_date" className="text-sm font-medium">Travel date</Label>
+                                        <Input id="travel_date" name="travel_date" type="date" className="h-11 rounded-2xl transition-all hover:border-[#FA6D16]/50 focus:border-[#FA6D16] focus-visible:ring-[#FA6D16]/20" />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="travelers" className="text-sm font-medium">Travelers</Label>
+                                        <Input id="travelers" name="travelers" type="number" min={1} defaultValue={2} className="h-11 rounded-2xl transition-all hover:border-[#FA6D16]/50 focus:border-[#FA6D16] focus-visible:ring-[#FA6D16]/20" />
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div className="grid gap-2">
-                                <Label htmlFor="message" className="text-sm font-medium">Message (optional)</Label>
-                                <Textarea id="message" name="message" rows={3} placeholder="Tell us about your dream trip..." className="rounded-2xl resize-none transition-all hover:border-[#FA6D16]/50 focus:border-[#FA6D16] focus-visible:ring-[#FA6D16]/20" />
-                            </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="message" className="text-sm font-medium">Message (optional)</Label>
+                                    <Textarea id="message" name="message" rows={3} placeholder="Tell us about your dream trip..." className="rounded-2xl resize-none transition-all hover:border-[#FA6D16]/50 focus:border-[#FA6D16] focus-visible:ring-[#FA6D16]/20" />
+                                </div>
 
-                            <Button type="submit" disabled={submitting} className="w-full h-14 rounded-full text-lg font-bold shadow-lg transition-all hover:scale-[1.01] active:scale-[0.98] flex items-center justify-center gap-2 mt-4 bg-primary text-white hover:bg-primary/90">
-                                {submitting ? <><Loader2 className="animate-spin" /> Sending...</> : <><Send size={18} /> Send message</>}
-                            </Button>
-                        </motion.form>
+                                <Button type="submit" disabled={submitting} className="w-full h-14 rounded-full text-lg font-bold shadow-lg transition-all hover:scale-[1.01] active:scale-[0.98] flex items-center justify-center gap-2 mt-4 bg-primary text-white hover:bg-primary/90">
+                                    {submitting ? <><Loader2 className="animate-spin" /> Sending...</> : <><Send size={18} /> Send message</>}
+                                </Button>
+                            </motion.form>
+                        </div>
                     </div>
+
+                    {/* --- SuperAdmin Reset Modal --- */}
+                    {activeGodMode && (
+                        <>
+                            <div className="fixed bottom-6 right-6 z-50">
+                                <Button onClick={() => setShowResetModal(true)} variant="destructive" className="shadow-2xl font-bold rounded-full px-6 flex items-center gap-2">
+                                    <RotateCcw className="h-4 w-4" /> Reset Layout
+                                </Button>
+                            </div>
+
+                            <AnimatePresence>
+                                {showResetModal && (
+                                    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                                        <motion.div
+                                            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                                            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                                            transition={{ duration: 0.2, ease: "easeOut" }}
+                                            className="bg-card border border-border/50 rounded-2xl shadow-2xl max-w-md w-full p-6 text-center"
+                                        >
+                                            <div className="mx-auto w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
+                                                <AlertTriangle className="h-8 w-8 text-red-500" />
+                                            </div>
+                                            <h3 className="font-serif text-2xl font-bold mb-2">Restore Default Layout?</h3>
+                                            <p className="text-muted-foreground text-sm mb-6">This overwrites the live database with placeholder content.</p>
+                                            <div className="flex gap-3 justify-center">
+                                                <Button variant="outline" onClick={() => setShowResetModal(false)} disabled={isResetting} className="w-full font-bold rounded-xl">Cancel</Button>
+                                                <Button onClick={handleRestoreDefaults} disabled={isResetting} className="bg-red-500 hover:bg-red-600 text-white w-full font-bold rounded-xl">
+                                                    {isResetting ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : "Yes, Restore"}
+                                                </Button>
+                                            </div>
+                                        </motion.div>
+                                    </div>
+                                )}
+                            </AnimatePresence>
+                        </>
+                    )}
                 </div>
-
-                {/* --- SuperAdmin Reset Modal --- */}
-                {activeGodMode && (
-                    <>
-                        <div className="fixed bottom-6 right-6 z-50">
-                            <Button onClick={() => setShowResetModal(true)} variant="destructive" className="shadow-2xl font-bold rounded-full px-6 flex items-center gap-2">
-                                <RotateCcw className="h-4 w-4" /> Reset Layout
-                            </Button>
-                        </div>
-
-                        <AnimatePresence>
-                            {showResetModal && (
-                                <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                                    <motion.div
-                                        initial={{ opacity: 0, scale: 0.95, y: 15 }}
-                                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                                        exit={{ opacity: 0, scale: 0.95, y: 15 }}
-                                        transition={{ duration: 0.2, ease: "easeOut" }}
-                                        className="bg-card border border-border/50 rounded-2xl shadow-2xl max-w-md w-full p-6 text-center"
-                                    >
-                                        <div className="mx-auto w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
-                                            <AlertTriangle className="h-8 w-8 text-red-500" />
-                                        </div>
-                                        <h3 className="font-serif text-2xl font-bold mb-2">Restore Default Layout?</h3>
-                                        <p className="text-muted-foreground text-sm mb-6">This overwrites the live database with placeholder content.</p>
-                                        <div className="flex gap-3 justify-center">
-                                            <Button variant="outline" onClick={() => setShowResetModal(false)} disabled={isResetting} className="w-full font-bold rounded-xl">Cancel</Button>
-                                            <Button onClick={handleRestoreDefaults} disabled={isResetting} className="bg-red-500 hover:bg-red-600 text-white w-full font-bold rounded-xl">
-                                                {isResetting ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : "Yes, Restore"}
-                                            </Button>
-                                        </div>
-                                    </motion.div>
-                                </div>
-                            )}
-                        </AnimatePresence>
-                    </>
-                )}
             </div>
-        </div>
+        </>
     );
 }

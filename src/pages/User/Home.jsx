@@ -9,6 +9,8 @@ import { InlineEditor } from "../../components/admin/InlineEditor";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
 
+import SEO from "../../components/site/SEO";
+
 const DynamicIcon = ({ name, className }) => {
     if (!name) return <Icons.HelpCircle className={className} />;
     const formattedName = name.charAt(0).toUpperCase() + name.slice(1);
@@ -264,7 +266,7 @@ export default function Home() {
     }, [settings.heroVideoMobileUrl]);
 
     useEffect(() => {
-        document.title = "Nepal Trip — Premium Headless CMS Travel";
+        // ✨ REMOVED the static document.title manipulation from here ✨
         const mountTimer = setTimeout(() => setIsMounted(true), 50);
 
         const fetchGlobalContent = async () => {
@@ -298,7 +300,7 @@ export default function Home() {
                     // Strip all spaces, dashes, and '+' signs
                     let cleanNum = data.data.whatsapp.replace(/[^0-9]/g, '');
 
-                    // ✨ If the admin only typed a 10-digit number, automatically add '91' (India)
+                    // If the admin only typed a 10-digit number, automatically add '91' (India)
                     if (cleanNum.length === 10) {
                         cleanNum = '91' + cleanNum;
                     }
@@ -414,6 +416,13 @@ export default function Home() {
 
     return (
         <>
+            {/* ✨ NEW: Injecting the SEO Component here! */}
+            <SEO
+                title={`Nepal Trip | ${settings.heroTitle || 'Best Nepal Tour Packages'}`}
+                description={settings.heroSubtitle || 'Handpicked tour packages across breathtaking destinations.'}
+                url="https://nepaltrip.in/"
+            />
+
             {/* ✨ MAIN ANIMATED CONTAINER ✨ 
                 This now wraps only the page sections, preventing the sticky buttons from breaking.
             */}

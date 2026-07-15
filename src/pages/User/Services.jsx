@@ -6,6 +6,7 @@ import { Plus, Trash2, RotateCcw } from "lucide-react";
 import { InlineEditor } from "../../components/admin/InlineEditor";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
+import SEO from "../../components/site/SEO";
 
 const DEFAULT_SERVICES_LIST = [
     { icon: "Headset", title: "Tour Operator", description: "Expert guidance and personalized itineraries for your perfect getaway." },
@@ -70,6 +71,7 @@ export default function Services() {
     }, []);
 
     useEffect(() => {
+        // ✨ REMOVED document.title from here
         const fetchServicesContent = async () => {
             try {
                 const { data } = await api.get("/services");
@@ -200,185 +202,194 @@ export default function Services() {
     }
 
     return (
-        <section className="relative py-20 bg-[#FDFBF7] overflow-hidden min-h-screen">
-            {/* Subtle background decorative elements */}
-            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-                <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-[#2A5244]/5 blur-[120px]" />
-                <div className="absolute top-[60%] right-[-10%] w-[40%] h-[60%] rounded-full bg-[#FA6D16]/5 blur-[120px]" />
-            </div>
+        <>
+            {/* ✨ NEW SEO COMPONENT ✨ */}
+            <SEO
+                title={`${settings.title || "Our Services"} | Nepal Trip`}
+                description="Explore our wide range of travel services including airline ticketing, hotel bookings, and bespoke Nepal tour operator services."
+                url="https://nepaltrip.in/services"
+            />
 
-            <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-                {/* Header Section */}
-                <div className="text-center max-w-3xl mx-auto mb-16">
+            <section className="relative py-20 bg-[#FDFBF7] overflow-hidden min-h-screen">
+                {/* Subtle background decorative elements */}
+                <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+                    <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-[#2A5244]/5 blur-[120px]" />
+                    <div className="absolute top-[60%] right-[-10%] w-[40%] h-[60%] rounded-full bg-[#FA6D16]/5 blur-[120px]" />
+                </div>
+
+                <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+                    {/* Header Section */}
+                    <div className="text-center max-w-3xl mx-auto mb-16">
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            className="text-[#FA6D16] font-bold tracking-wider uppercase text-sm mb-3"
+                        >
+                            {renderEditableText("tagline", "text", "What We Offer")}
+                        </motion.div>
+                        <motion.h2
+                            initial={{ opacity: 0, y: 10 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: 0.1 }}
+                            className="text-4xl md:text-5xl font-black text-[#2A5244] font-serif uppercase tracking-tight"
+                        >
+                            {renderEditableText("title", "text", "Our Services")}
+                        </motion.h2>
+                        <div className="w-24 h-1.5 bg-[#FA6D16] mx-auto mt-6 rounded-full" />
+                    </div>
+
+                    {/* Services Grid */}
                     <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        className="text-[#FA6D16] font-bold tracking-wider uppercase text-sm mb-3"
+                        variants={containerVariants}
+                        initial="hidden"
+                        whileInView="visible"
+                        viewport={{ once: true, margin: "-100px" }}
+                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 lg:gap-10"
                     >
-                        {renderEditableText("tagline", "text", "What We Offer")}
-                    </motion.div>
-                    <motion.h2
-                        initial={{ opacity: 0, y: 10 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: 0.1 }}
-                        className="text-4xl md:text-5xl font-black text-[#2A5244] font-serif uppercase tracking-tight"
-                    >
-                        {renderEditableText("title", "text", "Our Services")}
-                    </motion.h2>
-                    <div className="w-24 h-1.5 bg-[#FA6D16] mx-auto mt-6 rounded-full" />
-                </div>
-
-                {/* Services Grid */}
-                <motion.div
-                    variants={containerVariants}
-                    initial="hidden"
-                    whileInView="visible"
-                    viewport={{ once: true, margin: "-100px" }}
-                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 lg:gap-10"
-                >
-                    {/* Safeguard with fallback empty array to prevent map crashes */}
-                    {(settings.servicesList || []).map((service, idx) => (
-                        <motion.div
-                            key={service._id || idx}
-                            variants={itemVariants}
-                            initial="hidden"
-                            animate="visible"
-                            className="group relative bg-white rounded-3xl p-8 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-100 hover:shadow-[0_8px_30px_-4px_rgba(250,109,22,0.15)] hover:border-[#FA6D16]/30 transition-all duration-300 flex flex-col items-center text-center overflow-hidden"
-                        >
-                            {/* SuperAdmin Delete Button */}
-                            {isSuperAdmin && !isMobile && (
-                                <button
-                                    onClick={() => handleDeleteService(idx)}
-                                    className="absolute top-4 right-4 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-20 hover:scale-110 bg-white rounded-full p-1 shadow-sm"
-                                    title="Delete Service"
-                                >
-                                    <Trash2 className="h-5 w-5" />
-                                </button>
-                            )}
-
-                            {/* Hover background effect */}
-                            <div className="absolute inset-0 bg-linear-to-b from-transparent to-[#FA6D16]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-
-                            {/* Icon Container */}
-                            <div className="relative w-20 h-20 rounded-2xl bg-slate-50 flex flex-col items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-[#FA6D16] group-hover:shadow-lg transition-all duration-500 ease-out z-10 rotate-3 group-hover:rotate-0">
-                                <DynamicIcon name={service.icon || "Star"} className="w-10 h-10 text-[#2A5244] group-hover:text-white transition-colors duration-300" />
-
-                                {/* SuperAdmin Icon Editor Overlay */}
+                        {/* Safeguard with fallback empty array to prevent map crashes */}
+                        {(settings.servicesList || []).map((service, idx) => (
+                            <motion.div
+                                key={service._id || idx}
+                                variants={itemVariants}
+                                initial="hidden"
+                                animate="visible"
+                                className="group relative bg-white rounded-3xl p-8 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-100 hover:shadow-[0_8px_30px_-4px_rgba(250,109,22,0.15)] hover:border-[#FA6D16]/30 transition-all duration-300 flex flex-col items-center text-center overflow-hidden"
+                            >
+                                {/* SuperAdmin Delete Button */}
                                 {isSuperAdmin && !isMobile && (
-                                    <div className="absolute -bottom-8 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap text-xs bg-white text-slate-800 shadow-md border px-2 py-1 rounded">
-                                        <InlineEditor
-                                            value={service.icon || "Star"}
-                                            onSave={(val) => handleUpdateService(idx, "icon", val)}
-                                        />
-                                    </div>
+                                    <button
+                                        onClick={() => handleDeleteService(idx)}
+                                        className="absolute top-4 right-4 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-20 hover:scale-110 bg-white rounded-full p-1 shadow-sm"
+                                        title="Delete Service"
+                                    >
+                                        <Trash2 className="h-5 w-5" />
+                                    </button>
                                 )}
-                            </div>
 
-                            {/* Content */}
-                            <div className="relative z-10 w-full">
-                                <h3 className="text-xl font-bold text-slate-800 mb-3 group-hover:text-[#2A5244] transition-colors">
-                                    {isMobile ? (service.title || "New Service") : (
-                                        <InlineEditor
-                                            value={service.title || "New Service"}
-                                            onSave={(val) => handleUpdateService(idx, "title", val)}
-                                        />
-                                    )}
-                                </h3>
-                                <div className="text-sm text-slate-500 leading-relaxed group-hover:text-slate-600 transition-colors">
-                                    {isMobile ? (service.description || "Description of the new service goes here.") : (
-                                        <InlineEditor
-                                            type="textarea"
-                                            value={service.description || "Description of the new service goes here."}
-                                            onSave={(val) => handleUpdateService(idx, "description", val)}
-                                        />
+                                {/* Hover background effect */}
+                                <div className="absolute inset-0 bg-linear-to-b from-transparent to-[#FA6D16]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+                                {/* Icon Container */}
+                                <div className="relative w-20 h-20 rounded-2xl bg-slate-50 flex flex-col items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-[#FA6D16] group-hover:shadow-lg transition-all duration-500 ease-out z-10 rotate-3 group-hover:rotate-0">
+                                    <DynamicIcon name={service.icon || "Star"} className="w-10 h-10 text-[#2A5244] group-hover:text-white transition-colors duration-300" />
+
+                                    {/* SuperAdmin Icon Editor Overlay */}
+                                    {isSuperAdmin && !isMobile && (
+                                        <div className="absolute -bottom-8 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap text-xs bg-white text-slate-800 shadow-md border px-2 py-1 rounded">
+                                            <InlineEditor
+                                                value={service.icon || "Star"}
+                                                onSave={(val) => handleUpdateService(idx, "icon", val)}
+                                            />
+                                        </div>
                                     )}
                                 </div>
+
+                                {/* Content */}
+                                <div className="relative z-10 w-full">
+                                    <h3 className="text-xl font-bold text-slate-800 mb-3 group-hover:text-[#2A5244] transition-colors">
+                                        {isMobile ? (service.title || "New Service") : (
+                                            <InlineEditor
+                                                value={service.title || "New Service"}
+                                                onSave={(val) => handleUpdateService(idx, "title", val)}
+                                            />
+                                        )}
+                                    </h3>
+                                    <div className="text-sm text-slate-500 leading-relaxed group-hover:text-slate-600 transition-colors">
+                                        {isMobile ? (service.description || "Description of the new service goes here.") : (
+                                            <InlineEditor
+                                                type="textarea"
+                                                value={service.description || "Description of the new service goes here."}
+                                                onSave={(val) => handleUpdateService(idx, "description", val)}
+                                            />
+                                        )}
+                                    </div>
+                                </div>
+                            </motion.div>
+                        ))}
+
+                        {/* Add New Service Card (SuperAdmin Only) */}
+                        {isSuperAdmin && !isMobile && (
+                            <div
+                                onClick={handleAddService}
+                                className="rounded-3xl border-2 border-dashed border-border/60 bg-transparent p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors opacity-60 hover:opacity-100 min-h-62.5"
+                            >
+                                <Plus className="h-10 w-10 text-muted-foreground mb-3" />
+                                <span className="text-sm font-bold text-muted-foreground">Add New Service</span>
                             </div>
-                        </motion.div>
-                    ))}
-
-                    {/* Add New Service Card (SuperAdmin Only) */}
-                    {isSuperAdmin && !isMobile && (
-                        <div
-                            onClick={handleAddService}
-                            className="rounded-3xl border-2 border-dashed border-border/60 bg-transparent p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors opacity-60 hover:opacity-100 min-h-62.5"
-                        >
-                            <Plus className="h-10 w-10 text-muted-foreground mb-3" />
-                            <span className="text-sm font-bold text-muted-foreground">Add New Service</span>
-                        </div>
-                    )}
-                </motion.div>
-            </div>
-
-            {/* Restore Defaults Button (SuperAdmin Only) */}
-            {isSuperAdmin && !isMobile && (
-                <div className="absolute bottom-6 right-6 z-50">
-                    <button
-                        onClick={handleRestoreDefaultsClick}
-                        className="flex items-center gap-2 px-4 py-2 bg-white text-slate-600 hover:text-[#FA6D16] hover:bg-orange-50 border border-slate-200 rounded-full shadow-sm hover:shadow-md transition-all duration-300 text-sm font-semibold"
-                        title="Reset to default layout"
-                    >
-                        <RotateCcw className="w-4 h-4" />
-                        Restore Defaults
-                    </button>
+                        )}
+                    </motion.div>
                 </div>
-            )}
 
-            {/* Custom Restore Defaults Modal */}
-            <AnimatePresence>
-                {showRestoreDialog && (
-                    <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
-                        {/* Backdrop overlay */}
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={() => setShowRestoreDialog(false)}
-                            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm cursor-pointer"
-                        />
-
-                        {/* Modal Box */}
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="relative w-full max-w-md bg-white rounded-3xl p-8 shadow-2xl overflow-hidden z-10"
+                {/* Restore Defaults Button (SuperAdmin Only) */}
+                {isSuperAdmin && !isMobile && (
+                    <div className="absolute bottom-6 right-6 z-50">
+                        <button
+                            onClick={handleRestoreDefaultsClick}
+                            className="flex items-center gap-2 px-4 py-2 bg-white text-slate-600 hover:text-[#FA6D16] hover:bg-orange-50 border border-slate-200 rounded-full shadow-sm hover:shadow-md transition-all duration-300 text-sm font-semibold"
+                            title="Reset to default layout"
                         >
-                            {/* Decorative background circle */}
-                            <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#FA6D16]/10 rounded-full blur-2xl pointer-events-none" />
-
-                            <div className="flex flex-col items-center text-center relative z-10">
-                                <div className="w-16 h-16 bg-orange-50 text-[#FA6D16] rounded-2xl flex items-center justify-center mb-6 shadow-inner border border-orange-100">
-                                    <RotateCcw className="w-8 h-8" />
-                                </div>
-
-                                <h3 className="text-2xl font-bold text-[#2A5244] mb-3">Restore Defaults?</h3>
-
-                                <p className="text-slate-500 mb-8 leading-relaxed text-sm">
-                                    Are you sure? This will discard your customized changes and reset all services to the original default layout. This action cannot be undone.
-                                </p>
-
-                                <div className="flex items-center justify-center gap-3 w-full">
-                                    <button
-                                        onClick={() => setShowRestoreDialog(false)}
-                                        className="flex-1 px-6 py-3 rounded-xl bg-slate-100 text-slate-700 font-semibold hover:bg-slate-200 transition-colors"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        onClick={confirmRestoreDefaults}
-                                        className="flex-1 px-6 py-3 rounded-xl bg-[#FA6D16] text-white font-semibold hover:bg-[#e05e10] hover:shadow-lg hover:shadow-[#FA6D16]/20 transition-all"
-                                    >
-                                        Yes, Restore
-                                    </button>
-                                </div>
-                            </div>
-                        </motion.div>
+                            <RotateCcw className="w-4 h-4" />
+                            Restore Defaults
+                        </button>
                     </div>
                 )}
-            </AnimatePresence>
-        </section>
+
+                {/* Custom Restore Defaults Modal */}
+                <AnimatePresence>
+                    {showRestoreDialog && (
+                        <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
+                            {/* Backdrop overlay */}
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                onClick={() => setShowRestoreDialog(false)}
+                                className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm cursor-pointer"
+                            />
+
+                            {/* Modal Box */}
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                                className="relative w-full max-w-md bg-white rounded-3xl p-8 shadow-2xl overflow-hidden z-10"
+                            >
+                                {/* Decorative background circle */}
+                                <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#FA6D16]/10 rounded-full blur-2xl pointer-events-none" />
+
+                                <div className="flex flex-col items-center text-center relative z-10">
+                                    <div className="w-16 h-16 bg-orange-50 text-[#FA6D16] rounded-2xl flex items-center justify-center mb-6 shadow-inner border border-orange-100">
+                                        <RotateCcw className="w-8 h-8" />
+                                    </div>
+
+                                    <h3 className="text-2xl font-bold text-[#2A5244] mb-3">Restore Defaults?</h3>
+
+                                    <p className="text-slate-500 mb-8 leading-relaxed text-sm">
+                                        Are you sure? This will discard your customized changes and reset all services to the original default layout. This action cannot be undone.
+                                    </p>
+
+                                    <div className="flex items-center justify-center gap-3 w-full">
+                                        <button
+                                            onClick={() => setShowRestoreDialog(false)}
+                                            className="flex-1 px-6 py-3 rounded-xl bg-slate-100 text-slate-700 font-semibold hover:bg-slate-200 transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={confirmRestoreDefaults}
+                                            className="flex-1 px-6 py-3 rounded-xl bg-[#FA6D16] text-white font-semibold hover:bg-[#e05e10] hover:shadow-lg hover:shadow-[#FA6D16]/20 transition-all"
+                                        >
+                                            Yes, Restore
+                                        </button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>
+            </section>
+        </>
     );
 }

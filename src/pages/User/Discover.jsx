@@ -13,6 +13,7 @@ import MarkerClusterGroup from "react-leaflet-cluster";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import CustomSelect from "../../components/ui/CustomSelect";
+import SEO from "../../components/site/SEO";
 
 // --- Custom Leaflet Marker (Bigger & Clearer) ---
 const getCustomIcon = (imageUrl) => {
@@ -379,7 +380,7 @@ const GridCard = ({ pkg, allPackages, idx, navigate, activeGodMode, deletingId, 
                 <>
                     <AnimatePresence>
                         {deletingId === pkg._id && (
-                            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="absolute top-4 right-4 z-50 bg-black/90 backdrop-blur-lg border border-red-500/30 p-4 rounded-2xl flex flex-col gap-3 w-56" onClick={e => e.stopPropagation()}>
+                            <motion.div initial={{ opacity: 0, scale: 0.9, y: -10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: -10 }} className="absolute top-4 right-4 z-50 bg-black/90 backdrop-blur-lg border border-red-500/30 p-4 rounded-2xl shadow-2xl flex flex-col gap-3 w-56" onClick={e => e.stopPropagation()}>
                                 <div className="flex items-center gap-2 text-white"><AlertTriangle size={18} className="text-red-500" /><span className="text-sm font-bold">Delete?</span></div>
                                 <div className="flex gap-2 w-full mt-1">
                                     <Button size="sm" variant="ghost" className="w-full h-8 text-xs text-white/70 hover:bg-white/10" onClick={(e) => { e.stopPropagation(); setDeletingId(null); }}>Cancel</Button>
@@ -393,8 +394,17 @@ const GridCard = ({ pkg, allPackages, idx, navigate, activeGodMode, deletingId, 
                             </button>
                         )}
                     </AnimatePresence>
-                    <div className="absolute top-4 left-26 z-40 bg-black/90 backdrop-blur-md p-1.5 rounded-xl border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1 shadow-xl w-48" onClick={e => e.stopPropagation()}>                        <div className="flex flex-col gap-1"><span className="text-white/70 text-[10px]">Desktop Image URL:</span><LiveMediaEditor initialValue={pkg.cover_image_desktop} onLivePreview={setLiveDesktop} onSave={(val) => onUpdate(pkg._id, "cover_image_desktop", val)} /></div>
-                        <div className="flex flex-col gap-1"><span className="text-white/70 text-[10px]">Mobile Image URL:</span><LiveMediaEditor initialValue={pkg.cover_image_mobile} onLivePreview={setLiveMobile} onSave={(val) => onUpdate(pkg._id, "cover_image_mobile", val)} /></div>
+
+                    <div className="absolute top-4 right-16 z-40 bg-black/80 backdrop-blur-md p-3 rounded-lg border border-white/20 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-2 shadow-xl max-w-50" onClick={e => e.stopPropagation()}>
+                        <p className="text-white text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"><Settings2 size={12} /> Media Setup</p>
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-white/60 text-[10px]">Desktop (Landscape):</span>
+                            <LiveMediaEditor initialValue={pkg.cover_image_desktop} onLivePreview={setLiveDesktop} onSave={(val) => onUpdate(pkg._id, "cover_image_desktop", val)} />
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-white/60 text-[10px]">Mobile (Portrait):</span>
+                            <LiveMediaEditor initialValue={pkg.cover_image_mobile} onLivePreview={setLiveMobile} onSave={(val) => onUpdate(pkg._id, "cover_image_mobile", val)} />
+                        </div>
 
                         <div className="flex gap-3 mt-1 pt-2 border-t border-white/10">
                             <div className="flex flex-col gap-1 w-1/2"><span className="text-emerald-400 text-[10px] font-bold">Lat:</span><InlineEditor value={pkg.latitude || ""} onSave={(val) => onUpdate(pkg._id, "latitude", Number(val))} /></div>
@@ -412,7 +422,7 @@ const GridCard = ({ pkg, allPackages, idx, navigate, activeGodMode, deletingId, 
             <div className="relative h-56 w-full overflow-hidden pointer-events-none">
                 <div className="hidden md:block w-full h-full"><SeamlessMedia src={liveDesktop} className="w-full h-full transition-transform duration-700 group-hover:scale-110" /></div>
                 <div className="block md:hidden w-full h-full"><SeamlessMedia src={liveMobile} className="w-full h-full transition-transform duration-700 group-hover:scale-110" /></div>
-                <div className="absolute inset-0 bg-linear-to-t from-black/70 via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent" />
 
                 <div className="absolute top-4 left-4 flex flex-col gap-2 items-start pointer-events-auto" onClick={e => e.stopPropagation()}>
                     <span className="bg-background/90 backdrop-blur text-foreground px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-border/50 uppercase tracking-widest">
@@ -699,7 +709,7 @@ export default function Discover() {
 
     // Fetch Discover Destinations AND All Packages
     useEffect(() => {
-        document.title = "Discover Nepal — NepalTrip";
+        // ✨ REMOVED document.title from here
         const timer = setTimeout(() => setIsMounted(true), 50);
 
         const fetchData = async () => {
@@ -844,167 +854,176 @@ export default function Discover() {
     const lockWheel = () => { wheelTimeout.current = setTimeout(() => { wheelTimeout.current = null; }, 800); };
 
     return (
-        <div className={`w-full transition-all duration-1000 ease-out transform ${isMounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-            <div className={`w-full bg-background min-h-[calc(100dvh-4rem)] flex flex-col pt-2 pb-6 md:pb-4 md:pt-6 font-sans relative animate-in fade-in duration-700 ${viewMode === 'immersive' ? 'overflow-hidden items-center' : ''}`}>
+        <>
+            {/* ✨ NEW SEO COMPONENT ✨ */}
+            <SEO
+                title="Discover Destinations | Nepal Trip"
+                description="Explore breathtaking destinations across Nepal. Find the perfect vibe for your next Himalayan adventure."
+                url="https://nepaltrip.in/discover"
+            />
 
-                {viewMode === 'immersive' && (
-                    <style>{`@media (max-width: 767px) { footer { display: none !important; } }`}</style>
-                )}
+            <div className={`w-full transition-all duration-1000 ease-out transform ${isMounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+                <div className={`w-full bg-background min-h-[calc(100dvh-4rem)] flex flex-col pt-2 pb-6 md:pb-4 md:pt-6 font-sans relative animate-in fade-in duration-700 ${viewMode === 'immersive' ? 'overflow-hidden items-center' : ''}`}>
 
-                <motion.div
-                    animate={{ y: isScrolled && viewMode === 'immersive' ? -100 : 0, opacity: isScrolled && viewMode === 'immersive' ? 0 : 1 }}
-                    transition={{ duration: 0.3 }}
-                    className={`w-full max-w-full md:max-w-5xl px-4 flex justify-between items-center z-50 mb-6 md:mb-6 ${viewMode !== 'immersive' ? 'mx-auto max-w-7xl' : ''}`}
-                >
-                    <div>
-                        <h1 className="text-xl md:text-3xl font-black text-foreground drop-shadow-sm tracking-tight">Discover</h1>
-                        <p className="text-muted-foreground text-xs md:text-base font-medium">
-                            {filteredDestinations.length} {filteredDestinations.length === 1 ? 'destination' : 'destinations'} found
-                        </p>
-                    </div>
+                    {viewMode === 'immersive' && (
+                        <style>{`@media (max-width: 767px) { footer { display: none !important; } }`}</style>
+                    )}
 
-                    <div className="flex items-center gap-2 md:gap-3 relative">
-                        <div ref={filterRef}>
-                            <motion.button
-                                whileTap={{ scale: 0.9 }}
-                                onClick={() => setIsFilterOpen(!isFilterOpen)}
-                                className={`cursor-pointer w-9 h-9 md:w-11 md:h-11 border shadow-sm rounded-full transition-colors flex items-center justify-center ${searchQuery || selectedCategory !== "All" ? "bg-emerald-600 text-white border-emerald-600" : "bg-card border-border text-foreground hover:bg-muted"}`}
-                            >
-                                {isFilterOpen ? <X size={18} /> : <Filter size={16} />}
-                            </motion.button>
-                            <AnimatePresence>
-                                {isFilterOpen && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                        className="absolute top-[calc(100%+12px)] right-0 w-[calc(100vw-32px)] sm:w-[320px] max-w-90 bg-card border border-border p-4 rounded-2xl shadow-xl flex flex-col gap-4 z-100"
-                                    >
-                                        <div>
-                                            <label className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Universal Search</label>
-                                            <Input type="search" placeholder="E.g., Kathmandu, Mountains..." className="w-full h-10 text-sm rounded-xl focus-visible:ring-emerald-600" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Categories (Vibe)</label>
-                                            <div className="flex flex-wrap gap-1.5">
-                                                {dynamicCategories.map(cat => (
-                                                    <button
-                                                        key={cat}
-                                                        onClick={() => setSelectedCategory(cat)}
-                                                        className={`cursor-pointer rounded-full px-3 py-1 text-xs md:text-sm font-medium transition-colors ${selectedCategory === cat ? "bg-emerald-600 text-white" : "bg-muted text-foreground hover:bg-muted/80"}`}
-                                                    >
-                                                        {cat}
-                                                    </button>
-                                                ))}
+                    <motion.div
+                        animate={{ y: isScrolled && viewMode === 'immersive' ? -100 : 0, opacity: isScrolled && viewMode === 'immersive' ? 0 : 1 }}
+                        transition={{ duration: 0.3 }}
+                        className={`w-full max-w-full md:max-w-5xl px-4 flex justify-between items-center z-50 mb-6 md:mb-6 ${viewMode !== 'immersive' ? 'mx-auto max-w-7xl' : ''}`}
+                    >
+                        <div>
+                            <h1 className="text-xl md:text-3xl font-black text-foreground drop-shadow-sm tracking-tight">Discover</h1>
+                            <p className="text-muted-foreground text-xs md:text-base font-medium">
+                                {filteredDestinations.length} {filteredDestinations.length === 1 ? 'destination' : 'destinations'} found
+                            </p>
+                        </div>
+
+                        <div className="flex items-center gap-2 md:gap-3 relative">
+                            <div ref={filterRef}>
+                                <motion.button
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={() => setIsFilterOpen(!isFilterOpen)}
+                                    className={`cursor-pointer w-9 h-9 md:w-11 md:h-11 border shadow-sm rounded-full transition-colors flex items-center justify-center ${searchQuery || selectedCategory !== "All" ? "bg-emerald-600 text-white border-emerald-600" : "bg-card border-border text-foreground hover:bg-muted"}`}
+                                >
+                                    {isFilterOpen ? <X size={18} /> : <Filter size={16} />}
+                                </motion.button>
+                                <AnimatePresence>
+                                    {isFilterOpen && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                            className="absolute top-[calc(100%+12px)] right-0 w-[calc(100vw-32px)] sm:w-[320px] max-w-90 bg-card border border-border p-4 rounded-2xl shadow-xl flex flex-col gap-4 z-100"
+                                        >
+                                            <div>
+                                                <label className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Universal Search</label>
+                                                <Input type="search" placeholder="E.g., Kathmandu, Mountains..." className="w-full h-10 text-sm rounded-xl focus-visible:ring-emerald-600" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                                             </div>
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
-
-                        <div className="flex bg-muted/50 p-1 rounded-full border border-border/50">
-                            <button onClick={() => setViewMode("immersive")} className={`cursor-pointer p-1.5 rounded-full transition-all ${viewMode === "immersive" ? "bg-white shadow-sm text-emerald-600" : "text-muted-foreground hover:text-foreground"}`} title="Immersive View"><GalleryHorizontalEnd size={18} /></button>
-                            <button onClick={() => setViewMode("grid")} className={`cursor-pointer p-1.5 rounded-full transition-all ${viewMode === "grid" ? "bg-white shadow-sm text-emerald-600" : "text-muted-foreground hover:text-foreground"}`} title="Grid View"><LayoutGrid size={18} /></button>
-                            <button onClick={() => setViewMode("map")} className={`cursor-pointer p-1.5 rounded-full transition-all ${viewMode === "map" ? "bg-white shadow-sm text-emerald-600" : "text-muted-foreground hover:text-foreground"}`} title="Map View"><MapIcon size={18} /></button>
-                        </div>
-                    </div>
-                </motion.div>
-
-                {isLoading ? null : (
-                    <>
-                        {activeGodMode && viewMode === "immersive" && (
-                            <div className="absolute top-24 left-1/2 -translate-x-1/2 z-50">
-                                <button onClick={handleInstantCreate} className="flex items-center gap-2 bg-emerald-600 cursor-pointer text-white px-6 py-2 rounded-full font-bold shadow-xl hover:scale-105 transition-transform border border-white/20">
-                                    <Plus size={18} /> Add Destination
-                                </button>
-                            </div>
-                        )}
-
-                        {viewMode === "immersive" && (
-                            <div className="flex-1 w-full max-w-full md:max-w-5xl relative z-10 px-3 md:px-0 mx-auto">
-                                <div ref={cardContainerRef} onWheel={handleWheel} style={{ perspective: "1000px" }} className="relative w-full h-[calc(100dvh-16rem)] my-4 md:my-0 min-h-100 max-h-200 md:h-[65vh] md:min-h-125 md:max-h-187.5 overflow-hidden flex items-center justify-center overscroll-x-none">
-                                    <motion.div drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={1} style={{ x: dragX, transformStyle: "preserve-3d" }} onDragStart={() => { isDragging.current = true; setHasSwiped(true); }} onDragEnd={handleDragEnd} className="absolute inset-0 z-10 cursor-grab active:cursor-grabbing flex items-center justify-center">
-                                        {filteredDestinations.map((pkg, i) => (
-                                            <CylinderCard
-                                                key={pkg._id}
-                                                pkg={pkg}
-                                                allPackages={allPackages}
-                                                index={i}
-                                                activeIndex={activeIndex}
-                                                dragX={dragX}
-                                                navigate={navigate}
-                                                isDragging={isDragging}
-                                                activeGodMode={activeGodMode}
-                                                deletingId={deletingId}
-                                                setDeletingId={setDeletingId}
-                                                confirmDelete={confirmDeletePackage}
-                                                onUpdate={handleUpdatePackage}
-                                                onUpdateLinked={handleUpdateLinkedPackage}
-                                                activeVibeSession={activeVibeSession}
-                                            />))}
-                                    </motion.div>
-
-                                    {currentIndex > 0 && (
-                                        <button onClick={(e) => { e.stopPropagation(); paginate(-1); }} className="cursor-pointer hidden md:flex absolute left-6 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white shadow-xl transition-all hover:bg-white/30 hover:scale-110 active:scale-95"><ChevronLeft className="w-8 h-8" /></button>
-                                    )}
-                                    {currentIndex < filteredDestinations.length - 1 && (
-                                        <button onClick={(e) => { e.stopPropagation(); paginate(1); }} className="cursor-pointer hidden md:flex absolute right-6 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white shadow-xl transition-all hover:bg-white/30 hover:scale-110 active:scale-95"><ChevronRight className="w-8 h-8" /></button>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {viewMode === "grid" && (
-                            <div className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pb-16 md:pb-10">
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                                    {activeGodMode && (
-                                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} onClick={handleInstantCreate} className="cursor-pointer group bg-transparent border-2 border-dashed border-emerald-600/40 rounded-3xl overflow-hidden shadow-sm hover:bg-emerald-600/5 transition-all duration-300 flex flex-col items-center justify-center min-h-100">
-                                            <div className="bg-emerald-600/10 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform"><Plus size={32} className="text-emerald-600" /></div>
-                                            <h3 className="text-xl font-serif font-bold text-foreground">Add New Destination</h3>
+                                            <div>
+                                                <label className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Categories (Vibe)</label>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {dynamicCategories.map(cat => (
+                                                        <button
+                                                            key={cat}
+                                                            onClick={() => setSelectedCategory(cat)}
+                                                            className={`cursor-pointer rounded-full px-3 py-1 text-xs md:text-sm font-medium transition-colors ${selectedCategory === cat ? "bg-emerald-600 text-white" : "bg-muted text-foreground hover:bg-muted/80"}`}
+                                                        >
+                                                            {cat}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
                                         </motion.div>
                                     )}
-                                    {filteredDestinations.map((pkg, idx) => (
-                                        <GridCard key={pkg._id} pkg={pkg} allPackages={allPackages} idx={idx} navigate={navigate} activeGodMode={activeGodMode} deletingId={deletingId} setDeletingId={setDeletingId} confirmDelete={confirmDeletePackage} onUpdate={handleUpdatePackage} onUpdateLinked={handleUpdateLinkedPackage} />
-                                    ))}
-                                </div>
+                                </AnimatePresence>
                             </div>
-                        )}
 
-                        {viewMode === "map" && (
-                            <div className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pb-16 md:pb-10">
-                                <DiscoverMap destinations={filteredDestinations} allPackages={allPackages} navigate={navigate} activeGodMode={activeGodMode} onUpdate={handleUpdatePackage} />
+                            <div className="flex bg-muted/50 p-1 rounded-full border border-border/50">
+                                <button onClick={() => setViewMode("immersive")} className={`cursor-pointer p-1.5 rounded-full transition-all ${viewMode === "immersive" ? "bg-white shadow-sm text-emerald-600" : "text-muted-foreground hover:text-foreground"}`} title="Immersive View"><GalleryHorizontalEnd size={18} /></button>
+                                <button onClick={() => setViewMode("grid")} className={`cursor-pointer p-1.5 rounded-full transition-all ${viewMode === "grid" ? "bg-white shadow-sm text-emerald-600" : "text-muted-foreground hover:text-foreground"}`} title="Grid View"><LayoutGrid size={18} /></button>
+                                <button onClick={() => setViewMode("map")} className={`cursor-pointer p-1.5 rounded-full transition-all ${viewMode === "map" ? "bg-white shadow-sm text-emerald-600" : "text-muted-foreground hover:text-foreground"}`} title="Map View"><MapIcon size={18} /></button>
                             </div>
-                        )}
+                        </div>
+                    </motion.div>
+
+                    {isLoading ? null : (
+                        <>
+                            {activeGodMode && viewMode === "immersive" && (
+                                <div className="absolute top-24 left-1/2 -translate-x-1/2 z-50">
+                                    <button onClick={handleInstantCreate} className="flex items-center gap-2 bg-emerald-600 cursor-pointer text-white px-6 py-2 rounded-full font-bold shadow-xl hover:scale-105 transition-transform border border-white/20">
+                                        <Plus size={18} /> Add Destination
+                                    </button>
+                                </div>
+                            )}
+
+                            {viewMode === "immersive" && (
+                                <div className="flex-1 w-full max-w-full md:max-w-5xl relative z-10 px-3 md:px-0 mx-auto">
+                                    <div ref={cardContainerRef} onWheel={handleWheel} style={{ perspective: "1000px" }} className="relative w-full h-[calc(100dvh-16rem)] my-4 md:my-0 min-h-100 max-h-200 md:h-[65vh] md:min-h-125 md:max-h-187.5 overflow-hidden flex items-center justify-center overscroll-x-none">
+                                        <motion.div drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={1} style={{ x: dragX, transformStyle: "preserve-3d" }} onDragStart={() => { isDragging.current = true; setHasSwiped(true); }} onDragEnd={handleDragEnd} className="absolute inset-0 z-10 cursor-grab active:cursor-grabbing flex items-center justify-center">
+                                            {filteredDestinations.map((pkg, i) => (
+                                                <CylinderCard
+                                                    key={pkg._id}
+                                                    pkg={pkg}
+                                                    allPackages={allPackages}
+                                                    index={i}
+                                                    activeIndex={activeIndex}
+                                                    dragX={dragX}
+                                                    navigate={navigate}
+                                                    isDragging={isDragging}
+                                                    activeGodMode={activeGodMode}
+                                                    deletingId={deletingId}
+                                                    setDeletingId={setDeletingId}
+                                                    confirmDelete={confirmDeletePackage}
+                                                    onUpdate={handleUpdatePackage}
+                                                    onUpdateLinked={handleUpdateLinkedPackage}
+                                                    activeVibeSession={activeVibeSession}
+                                                />))}
+                                        </motion.div>
+
+                                        {currentIndex > 0 && (
+                                            <button onClick={(e) => { e.stopPropagation(); paginate(-1); }} className="cursor-pointer hidden md:flex absolute left-6 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white shadow-xl transition-all hover:bg-white/30 hover:scale-110 active:scale-95"><ChevronLeft className="w-8 h-8" /></button>
+                                        )}
+                                        {currentIndex < filteredDestinations.length - 1 && (
+                                            <button onClick={(e) => { e.stopPropagation(); paginate(1); }} className="cursor-pointer hidden md:flex absolute right-6 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white shadow-xl transition-all hover:bg-white/30 hover:scale-110 active:scale-95"><ChevronRight className="w-8 h-8" /></button>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {viewMode === "grid" && (
+                                <div className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pb-16 md:pb-10">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                                        {activeGodMode && (
+                                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} onClick={handleInstantCreate} className="cursor-pointer group bg-transparent border-2 border-dashed border-emerald-600/40 rounded-3xl overflow-hidden shadow-sm hover:bg-emerald-600/5 transition-all duration-300 flex flex-col items-center justify-center min-h-100">
+                                                <div className="bg-emerald-600/10 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform"><Plus size={32} className="text-emerald-600" /></div>
+                                                <h3 className="text-xl font-serif font-bold text-foreground">Add New Destination</h3>
+                                            </motion.div>
+                                        )}
+                                        {filteredDestinations.map((pkg, idx) => (
+                                            <GridCard key={pkg._id} pkg={pkg} allPackages={allPackages} idx={idx} navigate={navigate} activeGodMode={activeGodMode} deletingId={deletingId} setDeletingId={setDeletingId} confirmDelete={confirmDeletePackage} onUpdate={handleUpdatePackage} onUpdateLinked={handleUpdateLinkedPackage} />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {viewMode === "map" && (
+                                <div className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pb-16 md:pb-10">
+                                    <DiscoverMap destinations={filteredDestinations} allPackages={allPackages} navigate={navigate} activeGodMode={activeGodMode} onUpdate={handleUpdatePackage} />
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
+
+                {activeGodMode && (
+                    <>
+                        <div className="fixed bottom-6 right-6 z-50">
+                            <Button onClick={() => setShowRestoreModal(true)} variant="destructive" className="shadow-2xl font-bold rounded-full px-6 flex items-center gap-2">
+                                <RotateCcw className="h-4 w-4" /> Seed Demo Data
+                            </Button>
+                        </div>
+
+                        <AnimatePresence>
+                            {showRestoreModal && (
+                                <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-card border border-border/50 rounded-2xl shadow-2xl max-w-md w-full p-6 text-center">
+                                        <div className="mx-auto w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4"><AlertTriangle className="h-8 w-8 text-red-500" /></div>
+                                        <h3 className="font-serif text-2xl font-bold text-foreground mb-2">Seed Demo Destinations?</h3>
+                                        <p className="text-muted-foreground text-sm mb-6 leading-relaxed">This will overwrite everything and inject the original placeholder packages into your database.</p>
+                                        <div className="flex gap-3 justify-center">
+                                            <Button variant="outline" onClick={() => setShowRestoreModal(false)} disabled={isRestoring} className="rounded-xl w-full">Cancel</Button>
+                                            <Button onClick={handleRestoreDefaults} disabled={isRestoring} className="bg-red-500 hover:bg-red-600 text-white rounded-xl w-full flex items-center justify-center">
+                                                {isRestoring ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Yes, Inject Data
+                                            </Button>
+                                        </div>
+                                    </motion.div>
+                                </div>
+                            )}
+                        </AnimatePresence>
                     </>
                 )}
             </div>
-
-            {activeGodMode && (
-                <>
-                    <div className="fixed bottom-6 right-6 z-50">
-                        <Button onClick={() => setShowRestoreModal(true)} variant="destructive" className="shadow-2xl font-bold rounded-full px-6 flex items-center gap-2">
-                            <RotateCcw className="h-4 w-4" /> Seed Demo Data
-                        </Button>
-                    </div>
-
-                    <AnimatePresence>
-                        {showRestoreModal && (
-                            <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-card border border-border/50 rounded-2xl shadow-2xl max-w-md w-full p-6 text-center">
-                                    <div className="mx-auto w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4"><AlertTriangle className="h-8 w-8 text-red-500" /></div>
-                                    <h3 className="font-serif text-2xl font-bold text-foreground mb-2">Seed Demo Destinations?</h3>
-                                    <p className="text-muted-foreground text-sm mb-6 leading-relaxed">This will overwrite everything and inject the original placeholder packages into your database.</p>
-                                    <div className="flex gap-3 justify-center">
-                                        <Button variant="outline" onClick={() => setShowRestoreModal(false)} disabled={isRestoring} className="rounded-xl w-full">Cancel</Button>
-                                        <Button onClick={handleRestoreDefaults} disabled={isRestoring} className="bg-red-500 hover:bg-red-600 text-white rounded-xl w-full flex items-center justify-center">
-                                            {isRestoring ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Yes, Inject Data
-                                        </Button>
-                                    </div>
-                                </motion.div>
-                            </div>
-                        )}
-                    </AnimatePresence>
-                </>
-            )}
-        </div>
+        </>
     );
 }

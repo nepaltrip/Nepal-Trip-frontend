@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
 import { InlineEditor } from "../../components/admin/InlineEditor";
+import SEO from "../../components/site/SEO";
 
 const TIERS = ["All", "Gold", "Platinum"];
 
@@ -295,7 +296,6 @@ const CylinderCard = ({ pkg, index, activeIndex, dragX, onNavigate, isDragging, 
                     <div className="flex items-center text-white font-bold text-xl md:text-3xl drop-shadow-sm mt-0.5">
                         <IndianRupee size={24} className="mr-0.5 md:mr-1" strokeWidth={2.5} />
                         {activeGodMode ? (
-                            // ✨ DYNAMIC GOD-MODE PRICE MUTATION
                             pkg.serviceTier === "Platinum" ? (
                                 <InlineEditor
                                     value={pkg.price_platinum || 0}
@@ -308,7 +308,6 @@ const CylinderCard = ({ pkg, index, activeIndex, dragX, onNavigate, isDragging, 
                                 />
                             )
                         ) : (
-                            // Public display logic
                             pkg.serviceTier === "Platinum"
                                 ? (pkg.price_platinum?.toLocaleString('en-IN') || 0)
                                 : (pkg.price_gold?.toLocaleString('en-IN') || 0)
@@ -418,7 +417,6 @@ const GridCard = ({ pkg, idx, onNavigate, activeGodMode, deletingId, setDeleting
                         <div className="text-lg font-bold text-foreground flex items-center">
                             <IndianRupee size={16} strokeWidth={2.5} />
                             {activeGodMode ? (
-                                // ✨ DYNAMIC GOD-MODE PRICE MUTATION
                                 pkg.serviceTier === "Platinum" ? (
                                     <InlineEditor
                                         value={pkg.price_platinum || 0}
@@ -431,7 +429,6 @@ const GridCard = ({ pkg, idx, onNavigate, activeGodMode, deletingId, setDeleting
                                     />
                                 )
                             ) : (
-                                // Public display logic
                                 pkg.serviceTier === "Platinum"
                                     ? (pkg.price_platinum?.toLocaleString('en-IN') || 0)
                                     : (pkg.price_gold?.toLocaleString('en-IN') || 0)
@@ -495,7 +492,7 @@ export default function Packages() {
     const isDragging = useRef(false);
 
     useEffect(() => {
-        document.title = "Packages — NepalTrip";
+        // ✨ REMOVED document.title from here
         const timer = setTimeout(() => setIsMounted(true), 50);
 
         const fetchPackages = async () => {
@@ -664,19 +661,16 @@ export default function Packages() {
     const handleUpdatePackage = async (id, field, value) => {
         let finalValue = value;
 
-        // ✨ NEW: Auto-format the Tier so "gold", "GOLD", "platinum" etc. all work perfectly
         if (field === "serviceTier") {
             const cleanStr = String(value).trim().toLowerCase();
             if (cleanStr === 'platinum') finalValue = 'Platinum';
             else if (cleanStr === 'all') finalValue = 'All';
-            else finalValue = 'Gold'; // Default fallback to Gold if they mistype
+            else finalValue = 'Gold';
         }
 
-        // Update local state immediately
         setPackages(prev => prev.map(p => p._id === id ? { ...p, [field]: finalValue } : p));
 
         try {
-            // Save to database
             await api.put(`/packages/${id}`, { [field]: finalValue });
         } catch (error) {
             toast.error("Failed to save changes.");
@@ -709,227 +703,236 @@ export default function Packages() {
     };
 
     return (
-        <div className={`w-full transition-all duration-1000 ease-out transform ${isMounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-            <div className={`w-full bg-background min-h-[calc(100dvh-4rem)] flex flex-col pt-2 pb-6 md:pb-4 md:pt-6 font-sans relative animate-in fade-in duration-700 ${viewMode === 'immersive' ? 'overflow-hidden items-center' : ''}`}>
+        <>
+            {/* ✨ NEW SEO COMPONENT ✨ */}
+            <SEO
+                title="All Tour Packages | Nepal Trip"
+                description="Browse our complete list of handpicked Nepal tour packages, from standard itineraries to luxury platinum experiences."
+                url="https://nepaltrip.in/packages"
+            />
 
-                {viewMode === 'immersive' && (
-                    <style>{`@media (max-width: 767px) { footer { display: none !important; } }`}</style>
-                )}
+            <div className={`w-full transition-all duration-1000 ease-out transform ${isMounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+                <div className={`w-full bg-background min-h-[calc(100dvh-4rem)] flex flex-col pt-2 pb-6 md:pb-4 md:pt-6 font-sans relative animate-in fade-in duration-700 ${viewMode === 'immersive' ? 'overflow-hidden items-center' : ''}`}>
 
-                <motion.div
-                    animate={{ y: isScrolled && viewMode === 'immersive' ? -100 : 0, opacity: isScrolled && viewMode === 'immersive' ? 0 : 1 }}
-                    transition={{ duration: 0.3 }}
-                    className={`w-full max-w-full md:max-w-5xl px-4 flex justify-between items-center z-50 mb-6 md:mb-6 ${viewMode === 'grid' ? 'mx-auto' : ''}`}
-                >
-                    <div>
-                        <h1 className="text-xl md:text-3xl font-black text-foreground drop-shadow-sm tracking-tight">Explore</h1>
-                        <p className="text-muted-foreground text-xs md:text-base font-medium">
-                            {filteredPackages.length} {filteredPackages.length === 1 ? 'trip' : 'trips'} found
-                        </p>
-                    </div>
+                    {viewMode === 'immersive' && (
+                        <style>{`@media (max-width: 767px) { footer { display: none !important; } }`}</style>
+                    )}
 
-                    <div className="flex items-center gap-2 md:gap-3 relative">
-                        <div ref={tierRef}>
-                            <motion.button
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() => { setIsTierOpen(!isTierOpen); setIsFilterOpen(false); }}
-                                className={`cursor-pointer flex items-center gap-1.5 p-2 md:px-4 md:py-2.5 rounded-full font-bold text-xs md:text-sm border transition-colors ${selectedTier !== "All" ? getTierBadgeStyle(selectedTier) : "bg-card border-border shadow-sm text-foreground hover:bg-muted"}`}
-                            >
-                                {isTierOpen ? <X size={16} /> : <Sparkles size={16} className={selectedTier !== "All" ? getTierIconColor(selectedTier) : ""} />}
-                                <span className="hidden sm:inline">{selectedTier === "All" ? "Service Tier" : `${selectedTier} Service`}</span>
-                            </motion.button>
-                            <AnimatePresence>
-                                {isTierOpen && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                        className="absolute top-[calc(100%+12px)] right-0 w-60 bg-card border border-border p-2 rounded-2xl shadow-xl flex flex-col gap-1 z-100"
-                                    >
-                                        <div className="px-3 py-2 text-xs font-bold text-muted-foreground uppercase tracking-wider border-b border-border/50 mb-1">Select Service Level</div>
-                                        {TIERS.map(tier => (
-                                            <button
-                                                key={tier}
-                                                onClick={() => { setSelectedTier(tier); setIsTierOpen(false); }}
-                                                className={`cursor-pointer flex items-center justify-between px-3 py-2.5 text-sm rounded-xl transition-colors ${selectedTier === tier ? "bg-primary/10" : "hover:bg-muted"} ${getTierTextStyle(tier)}`}
-                                            >
-                                                {tier === "All" ? "All Packages" : `${tier} Service`}
-                                                {selectedTier === tier && <Check size={16} className={getTierTextStyle(tier)} />}
-                                            </button>
-                                        ))}
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
+                    <motion.div
+                        animate={{ y: isScrolled && viewMode === 'immersive' ? -100 : 0, opacity: isScrolled && viewMode === 'immersive' ? 0 : 1 }}
+                        transition={{ duration: 0.3 }}
+                        className={`w-full max-w-full md:max-w-5xl px-4 flex justify-between items-center z-50 mb-6 md:mb-6 ${viewMode === 'grid' ? 'mx-auto' : ''}`}
+                    >
+                        <div>
+                            <h1 className="text-xl md:text-3xl font-black text-foreground drop-shadow-sm tracking-tight">Explore</h1>
+                            <p className="text-muted-foreground text-xs md:text-base font-medium">
+                                {filteredPackages.length} {filteredPackages.length === 1 ? 'trip' : 'trips'} found
+                            </p>
                         </div>
 
-                        <div ref={filterRef}>
-                            <motion.button
-                                whileTap={{ scale: 0.9 }}
-                                onClick={() => { setIsFilterOpen(!isFilterOpen); setIsTierOpen(false); }}
-                                className={`cursor-pointer w-9 h-9 md:w-11 md:h-11 border shadow-sm rounded-full transition-colors flex items-center justify-center ${searchQuery || selectedCategory !== "All" ? "bg-primary text-white border-primary" : "bg-card border-border text-foreground hover:bg-muted"}`}
-                            >
-                                {isFilterOpen ? <X size={18} /> : <Filter size={16} />}
-                            </motion.button>
-                            <AnimatePresence>
-                                {isFilterOpen && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                        className="absolute top-[calc(100%+12px)] right-0 w-[calc(100vw-32px)] sm:w-[320px] max-w-90 bg-card border border-border p-4 rounded-2xl shadow-xl flex flex-col gap-4 z-100"
-                                    >
-                                        <div>
-                                            <label className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Universal Search</label>
-                                            <Input type="search" placeholder="E.g., Maldives, Beach, 45000..." className="w-full h-10 text-sm rounded-xl" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Categories</label>
-                                            <div className="flex flex-wrap gap-1.5">
-                                                {dynamicCategories.map(cat => (
-                                                    <button
-                                                        key={cat}
-                                                        onClick={() => setSelectedCategory(cat)}
-                                                        className={`cursor-pointer rounded-full px-3 py-1 text-xs md:text-sm font-medium transition-colors ${selectedCategory === cat ? "bg-primary text-white" : "bg-muted text-foreground hover:bg-muted/80"}`}
-                                                    >
-                                                        {cat}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
-
-                        <div className="flex bg-muted/50 p-1 rounded-full border border-border/50">
-                            <button onClick={() => setViewMode("immersive")} className={`cursor-pointer p-1.5 rounded-full transition-all ${viewMode === "immersive" ? "bg-white shadow-sm text-primary" : "text-muted-foreground hover:text-foreground"}`}><GalleryHorizontalEnd size={18} /></button>
-                            <button onClick={() => setViewMode("grid")} className={`cursor-pointer p-1.5 rounded-full transition-all ${viewMode === "grid" ? "bg-white shadow-sm text-primary" : "text-muted-foreground hover:text-foreground"}`}><LayoutGrid size={18} /></button>
-                        </div>
-                    </div>
-                </motion.div>
-
-                {isLoading ? null : (
-                    <>
-                        {activeGodMode && viewMode === "immersive" && (
-                            <div className="absolute top-24 left-1/2 -translate-x-1/2 z-50">
-                                <button onClick={handleInstantCreate} className="flex items-center gap-2 bg-[#FA6D16] cursor-pointer text-white px-6 py-2 rounded-full font-bold shadow-xl hover:scale-105 transition-transform border border-white/20">
-                                    <Plus size={18} /> Add New Package
-                                </button>
-                            </div>
-                        )}
-
-                        {viewMode === "immersive" && (
-                            <div className="flex-1 w-full max-w-full md:max-w-5xl relative z-10 px-3 md:px-0 mx-auto">
-                                <div
-                                    ref={cardContainerRef}
-                                    onWheel={handleWheel}
-                                    style={{ perspective: "1000px" }}
-                                    className="relative w-full h-[calc(100dvh-16rem)] my-4 md:my-0 min-h-100 max-h-200 md:h-[65vh] md:min-h-125 md:max-h-187.5 overflow-hidden flex items-center justify-center overscroll-x-none"
+                        <div className="flex items-center gap-2 md:gap-3 relative">
+                            <div ref={tierRef}>
+                                <motion.button
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={() => { setIsTierOpen(!isTierOpen); setIsFilterOpen(false); }}
+                                    className={`cursor-pointer flex items-center gap-1.5 p-2 md:px-4 md:py-2.5 rounded-full font-bold text-xs md:text-sm border transition-colors ${selectedTier !== "All" ? getTierBadgeStyle(selectedTier) : "bg-card border-border shadow-sm text-foreground hover:bg-muted"}`}
                                 >
-                                    <motion.div
-                                        drag="x"
-                                        dragConstraints={{ left: 0, right: 0 }}
-                                        dragElastic={1}
-                                        style={{ x: dragX, transformStyle: "preserve-3d" }}
-                                        onDragStart={() => { isDragging.current = true; setHasSwiped(true); }}
-                                        onDragEnd={handleDragEnd}
-                                        className="absolute inset-0 z-10 cursor-grab active:cursor-grabbing flex items-center justify-center"
+                                    {isTierOpen ? <X size={16} /> : <Sparkles size={16} className={selectedTier !== "All" ? getTierIconColor(selectedTier) : ""} />}
+                                    <span className="hidden sm:inline">{selectedTier === "All" ? "Service Tier" : `${selectedTier} Service`}</span>
+                                </motion.button>
+                                <AnimatePresence>
+                                    {isTierOpen && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                            className="absolute top-[calc(100%+12px)] right-0 w-60 bg-card border border-border p-2 rounded-2xl shadow-xl flex flex-col gap-1 z-100"
+                                        >
+                                            <div className="px-3 py-2 text-xs font-bold text-muted-foreground uppercase tracking-wider border-b border-border/50 mb-1">Select Service Level</div>
+                                            {TIERS.map(tier => (
+                                                <button
+                                                    key={tier}
+                                                    onClick={() => { setSelectedTier(tier); setIsTierOpen(false); }}
+                                                    className={`cursor-pointer flex items-center justify-between px-3 py-2.5 text-sm rounded-xl transition-colors ${selectedTier === tier ? "bg-primary/10" : "hover:bg-muted"} ${getTierTextStyle(tier)}`}
+                                                >
+                                                    {tier === "All" ? "All Packages" : `${tier} Service`}
+                                                    {selectedTier === tier && <Check size={16} className={getTierTextStyle(tier)} />}
+                                                </button>
+                                            ))}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+
+                            <div ref={filterRef}>
+                                <motion.button
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={() => { setIsFilterOpen(!isFilterOpen); setIsTierOpen(false); }}
+                                    className={`cursor-pointer w-9 h-9 md:w-11 md:h-11 border shadow-sm rounded-full transition-colors flex items-center justify-center ${searchQuery || selectedCategory !== "All" ? "bg-primary text-white border-primary" : "bg-card border-border text-foreground hover:bg-muted"}`}
+                                >
+                                    {isFilterOpen ? <X size={18} /> : <Filter size={16} />}
+                                </motion.button>
+                                <AnimatePresence>
+                                    {isFilterOpen && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                            className="absolute top-[calc(100%+12px)] right-0 w-[calc(100vw-32px)] sm:w-[320px] max-w-90 bg-card border border-border p-4 rounded-2xl shadow-xl flex flex-col gap-4 z-100"
+                                        >
+                                            <div>
+                                                <label className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Universal Search</label>
+                                                <Input type="search" placeholder="E.g., Maldives, Beach, 45000..." className="w-full h-10 text-sm rounded-xl" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Categories</label>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {dynamicCategories.map(cat => (
+                                                        <button
+                                                            key={cat}
+                                                            onClick={() => setSelectedCategory(cat)}
+                                                            className={`cursor-pointer rounded-full px-3 py-1 text-xs md:text-sm font-medium transition-colors ${selectedCategory === cat ? "bg-primary text-white" : "bg-muted text-foreground hover:bg-muted/80"}`}
+                                                        >
+                                                            {cat}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+
+                            <div className="flex bg-muted/50 p-1 rounded-full border border-border/50">
+                                <button onClick={() => setViewMode("immersive")} className={`cursor-pointer p-1.5 rounded-full transition-all ${viewMode === "immersive" ? "bg-white shadow-sm text-primary" : "text-muted-foreground hover:text-foreground"}`}><GalleryHorizontalEnd size={18} /></button>
+                                <button onClick={() => setViewMode("grid")} className={`cursor-pointer p-1.5 rounded-full transition-all ${viewMode === "grid" ? "bg-white shadow-sm text-primary" : "text-muted-foreground hover:text-foreground"}`}><LayoutGrid size={18} /></button>
+                            </div>
+                        </div>
+                    </motion.div>
+
+                    {isLoading ? null : (
+                        <>
+                            {activeGodMode && viewMode === "immersive" && (
+                                <div className="absolute top-24 left-1/2 -translate-x-1/2 z-50">
+                                    <button onClick={handleInstantCreate} className="flex items-center gap-2 bg-[#FA6D16] cursor-pointer text-white px-6 py-2 rounded-full font-bold shadow-xl hover:scale-105 transition-transform border border-white/20">
+                                        <Plus size={18} /> Add New Package
+                                    </button>
+                                </div>
+                            )}
+
+                            {viewMode === "immersive" && (
+                                <div className="flex-1 w-full max-w-full md:max-w-5xl relative z-10 px-3 md:px-0 mx-auto">
+                                    <div
+                                        ref={cardContainerRef}
+                                        onWheel={handleWheel}
+                                        style={{ perspective: "1000px" }}
+                                        className="relative w-full h-[calc(100dvh-16rem)] my-4 md:my-0 min-h-100 max-h-200 md:h-[65vh] md:min-h-125 md:max-h-187.5 overflow-hidden flex items-center justify-center overscroll-x-none"
                                     >
-                                        {filteredPackages.map((pkg, i) => (
-                                            <CylinderCard
+                                        <motion.div
+                                            drag="x"
+                                            dragConstraints={{ left: 0, right: 0 }}
+                                            dragElastic={1}
+                                            style={{ x: dragX, transformStyle: "preserve-3d" }}
+                                            onDragStart={() => { isDragging.current = true; setHasSwiped(true); }}
+                                            onDragEnd={handleDragEnd}
+                                            className="absolute inset-0 z-10 cursor-grab active:cursor-grabbing flex items-center justify-center"
+                                        >
+                                            {filteredPackages.map((pkg, i) => (
+                                                <CylinderCard
+                                                    key={pkg._id}
+                                                    pkg={pkg}
+                                                    index={i}
+                                                    activeIndex={activeIndex}
+                                                    dragX={dragX}
+                                                    onNavigate={trackAndNavigate}
+                                                    isDragging={isDragging}
+                                                    activeGodMode={activeGodMode}
+                                                    deletingId={deletingId}
+                                                    setDeletingId={setDeletingId}
+                                                    confirmDelete={confirmDeletePackage}
+                                                    onUpdate={handleUpdatePackage}
+                                                />
+                                            ))}
+                                        </motion.div>
+
+                                        {currentIndex > 0 && (
+                                            <button onClick={(e) => { e.stopPropagation(); paginate(-1); }} className="cursor-pointer hidden md:flex absolute left-6 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white shadow-xl transition-all hover:bg-white/30 hover:scale-110 active:scale-95"><ChevronLeft className="w-8 h-8" /></button>
+                                        )}
+                                        {currentIndex < filteredPackages.length - 1 && (
+                                            <button onClick={(e) => { e.stopPropagation(); paginate(1); }} className="cursor-pointer hidden md:flex absolute right-6 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white shadow-xl transition-all hover:bg-white/30 hover:scale-110 active:scale-95"><ChevronRight className="w-8 h-8" /></button>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {viewMode === "grid" && (
+                                <div className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pb-16 md:pb-10">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                                        {activeGodMode && (
+                                            <motion.div
+                                                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                                                onClick={handleInstantCreate}
+                                                className="cursor-pointer group bg-transparent border-2 border-dashed border-primary/40 rounded-3xl overflow-hidden shadow-sm hover:bg-primary/5 transition-all duration-300 flex flex-col items-center justify-center min-h-100"
+                                            >
+                                                <div className="bg-primary/10 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
+                                                    <Plus size={32} className="text-primary" />
+                                                </div>
+                                                <h3 className="text-xl font-serif font-bold text-foreground">Add New Package</h3>
+                                            </motion.div>
+                                        )}
+
+                                        {filteredPackages.map((pkg, idx) => (
+                                            <GridCard
                                                 key={pkg._id}
                                                 pkg={pkg}
-                                                index={i}
-                                                activeIndex={activeIndex}
-                                                dragX={dragX}
+                                                idx={idx}
                                                 onNavigate={trackAndNavigate}
-                                                isDragging={isDragging}
                                                 activeGodMode={activeGodMode}
                                                 deletingId={deletingId}
                                                 setDeletingId={setDeletingId}
                                                 confirmDelete={confirmDeletePackage}
                                                 onUpdate={handleUpdatePackage}
+                                                onHoverActive={setHoveredGridPkg}
                                             />
                                         ))}
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
+
+                {activeGodMode && (
+                    <>
+                        <div className="fixed bottom-6 right-6 z-50">
+                            <Button onClick={() => setShowRestoreModal(true)} variant="destructive" className="shadow-2xl font-bold rounded-full px-6 flex items-center gap-2">
+                                <RotateCcw className="h-4 w-4" /> Seed Demo Data
+                            </Button>
+                        </div>
+
+                        <AnimatePresence>
+                            {showRestoreModal && (
+                                <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+                                        className="bg-card border border-border/50 rounded-2xl shadow-2xl max-w-md w-full p-6 text-center"
+                                    >
+                                        <div className="mx-auto w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
+                                            <AlertTriangle className="h-8 w-8 text-red-500" />
+                                        </div>
+                                        <h3 className="font-serif text-2xl font-bold text-foreground mb-2">Seed Demo Packages?</h3>
+                                        <p className="text-muted-foreground text-sm mb-6 leading-relaxed">
+                                            This will overwrite everything and inject the original placeholder packages into your database.
+                                        </p>
+                                        <div className="flex gap-3 justify-center">
+                                            <Button variant="outline" onClick={() => setShowRestoreModal(false)} disabled={isRestoring} className="rounded-xl w-full">Cancel</Button>
+                                            <Button onClick={handleRestoreDefaults} disabled={isRestoring} className="bg-red-500 hover:bg-red-600 text-white rounded-xl w-full flex items-center justify-center">
+                                                {isRestoring ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Yes, Inject Data
+                                            </Button>
+                                        </div>
                                     </motion.div>
-
-                                    {currentIndex > 0 && (
-                                        <button onClick={(e) => { e.stopPropagation(); paginate(-1); }} className="cursor-pointer hidden md:flex absolute left-6 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white shadow-xl transition-all hover:bg-white/30 hover:scale-110 active:scale-95"><ChevronLeft className="w-8 h-8" /></button>
-                                    )}
-                                    {currentIndex < filteredPackages.length - 1 && (
-                                        <button onClick={(e) => { e.stopPropagation(); paginate(1); }} className="cursor-pointer hidden md:flex absolute right-6 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white shadow-xl transition-all hover:bg-white/30 hover:scale-110 active:scale-95"><ChevronRight className="w-8 h-8" /></button>
-                                    )}
                                 </div>
-                            </div>
-                        )}
-
-                        {viewMode === "grid" && (
-                            <div className="w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pb-16 md:pb-10">
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                                    {activeGodMode && (
-                                        <motion.div
-                                            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                                            onClick={handleInstantCreate}
-                                            className="cursor-pointer group bg-transparent border-2 border-dashed border-primary/40 rounded-3xl overflow-hidden shadow-sm hover:bg-primary/5 transition-all duration-300 flex flex-col items-center justify-center min-h-100"
-                                        >
-                                            <div className="bg-primary/10 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
-                                                <Plus size={32} className="text-primary" />
-                                            </div>
-                                            <h3 className="text-xl font-serif font-bold text-foreground">Add New Package</h3>
-                                        </motion.div>
-                                    )}
-
-                                    {filteredPackages.map((pkg, idx) => (
-                                        <GridCard
-                                            key={pkg._id}
-                                            pkg={pkg}
-                                            idx={idx}
-                                            onNavigate={trackAndNavigate}
-                                            activeGodMode={activeGodMode}
-                                            deletingId={deletingId}
-                                            setDeletingId={setDeletingId}
-                                            confirmDelete={confirmDeletePackage}
-                                            onUpdate={handleUpdatePackage}
-                                            onHoverActive={setHoveredGridPkg}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+                            )}
+                        </AnimatePresence>
                     </>
                 )}
             </div>
-
-            {activeGodMode && (
-                <>
-                    <div className="fixed bottom-6 right-6 z-50">
-                        <Button onClick={() => setShowRestoreModal(true)} variant="destructive" className="shadow-2xl font-bold rounded-full px-6 flex items-center gap-2">
-                            <RotateCcw className="h-4 w-4" /> Seed Demo Data
-                        </Button>
-                    </div>
-
-                    <AnimatePresence>
-                        {showRestoreModal && (
-                            <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                                <motion.div
-                                    initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-                                    className="bg-card border border-border/50 rounded-2xl shadow-2xl max-w-md w-full p-6 text-center"
-                                >
-                                    <div className="mx-auto w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
-                                        <AlertTriangle className="h-8 w-8 text-red-500" />
-                                    </div>
-                                    <h3 className="font-serif text-2xl font-bold text-foreground mb-2">Seed Demo Packages?</h3>
-                                    <p className="text-muted-foreground text-sm mb-6 leading-relaxed">
-                                        This will overwrite everything and inject the original placeholder packages into your database.
-                                    </p>
-                                    <div className="flex gap-3 justify-center">
-                                        <Button variant="outline" onClick={() => setShowRestoreModal(false)} disabled={isRestoring} className="rounded-xl w-full">Cancel</Button>
-                                        <Button onClick={handleRestoreDefaults} disabled={isRestoring} className="bg-red-500 hover:bg-red-600 text-white rounded-xl w-full flex items-center justify-center">
-                                            {isRestoring ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Yes, Inject Data
-                                        </Button>
-                                    </div>
-                                </motion.div>
-                            </div>
-                        )}
-                    </AnimatePresence>
-                </>
-            )}
-        </div>
+        </>
     );
 }
