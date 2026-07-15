@@ -1,0 +1,11 @@
+# Allow all search engines to crawl the site
+User-agent: *
+Allow: /
+
+# Disallow search engines from indexing your admin and superadmin dashboards
+Disallow: /admin/
+Disallow: /superadmin/
+Disallow: /auth/
+
+# Tell Google exactly where your sitemap lives
+Sitemap: https://nepaltrip.in/sitemap.xml
