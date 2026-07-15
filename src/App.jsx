@@ -2,6 +2,7 @@ import React, { Suspense, lazy, useEffect, useState, useRef } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Outlet, Router } from 'react-router-dom';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { motion } from 'framer-motion'; // ✨ ADDED framer-motion
 
 // Keep essential global layout pieces static
 import { Navbar } from './components/site/Navbar';
@@ -41,7 +42,7 @@ const AdminAnalytics = lazy(() => import('./pages/Admin/AdminAnalytics'));
 const AdminInquiries = lazy(() => import('./pages/Admin/AdminInquiries'));
 const AdminSettings = lazy(() => import('./pages/Admin/AdminSettings'));
 const AdminUsers = lazy(() => import('./pages/Admin/AdminUsers'));
-const AdminBroadcast = lazy(() => import('./pages/Admin/AdminBroadcast').then(m => ({ default: m.AdminBroadcast }))); // ✨ ADD THIS
+const AdminBroadcast = lazy(() => import('./pages/Admin/AdminBroadcast').then(m => ({ default: m.AdminBroadcast })));
 
 // ==========================================
 // Lazy Load Super Admin Pages
@@ -102,23 +103,43 @@ function UpdateNotification() {
 }
 
 // ==========================================
-// Fallback Loader
+// Fallback Loader (Animated)
 // ==========================================
 const PageLoader = () => (
   <div className="fixed inset-0 z-100 flex h-screen w-full flex-col items-center justify-center bg-[#FDFBF7]">
-    <div className="flex flex-col items-center justify-center gap-6">
-      <div className="relative flex items-center justify-center h-32 w-32 md:h-40 md:w-40 rounded-full bg-linear-to-r from-slate-300 via-slate-100 to-slate-300 bg-size-[400%_100%] animate-[shimmer_1.5s_infinite_linear]">
-        <div className="flex items-center justify-center h-[calc(100%-12px)] w-[calc(100%-12px)] rounded-full bg-[#FDFBF7]">
+    <div className="flex flex-col items-center justify-center gap-8">
+      {/* 
+        Using Framer Motion to animate both scale (zooming) and padding (ring thickness). 
+        The inner div takes up full height/width minus the padding, creating the ring effect! 
+      */}
+      <motion.div
+        animate={{
+          scale: [0.9, 1.15, 0.9],
+          padding: ["6px", "18px", "6px"],
+        }}
+        transition={{
+          duration: 2.5,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+        className="relative flex items-center justify-center h-32 w-32 md:h-40 md:w-40 rounded-full bg-linear-to-r from-slate-300 via-slate-100 to-slate-300 bg-size-[400%_100%] animate-[shimmer_1.5s_infinite_linear]"
+      >
+        <div className="flex items-center justify-center h-full w-full rounded-full bg-[#FDFBF7]">
           <span className="text-6xl md:text-7xl font-sans font-black tracking-tighter text-transparent bg-clip-text bg-linear-to-r from-slate-300 via-slate-100 to-slate-300 bg-size-[400%_100%] animate-[shimmer_1.5s_infinite_linear]">
             N
           </span>
         </div>
-      </div>
-      <div>
+      </motion.div>
+
+      {/* Pulse the text opacity slightly alongside the ring */}
+      <motion.div
+        animate={{ opacity: [0.6, 1, 0.6] }}
+        transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+      >
         <span className="text-sm md:text-base font-sans font-extrabold tracking-[0.3em] uppercase text-transparent bg-clip-text bg-linear-to-r from-slate-300 via-slate-100 to-slate-300 bg-size-[400%_100%] animate-[shimmer_1.5s_infinite_linear]">
           Nepal Trip
         </span>
-      </div>
+      </motion.div>
     </div>
   </div>
 );

@@ -318,6 +318,8 @@ export default function AdminAnalytics() {
                 <div className="mb-4">
                     <h2 className="text-xl font-bold font-serif text-foreground flex items-center gap-2"><Compass className="h-6 w-6 text-[#2A5244]" /> Package Traffic & Leads</h2>
                 </div>
+
+                {/* DESKTOP TABLE VIEW */}
                 <div className="hidden md:block bg-white border border-border/40 rounded-2xl shadow-sm overflow-hidden">
                     <table className="w-full text-sm text-left">
                         <thead className="text-xs text-muted-foreground uppercase bg-[#FDFBF7] border-b border-border/40">
@@ -346,8 +348,46 @@ export default function AdminAnalytics() {
                                     </AnimatePresence>
                                 </React.Fragment>
                             ))}
+                            {packageEngagement.length === 0 && (
+                                <tr>
+                                    <td colSpan="5" className="px-6 py-8 text-center text-muted-foreground italic">
+                                        No package analytics available yet.
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
+                </div>
+
+                {/* MOBILE CARD VIEW */}
+                <div className="md:hidden flex flex-col gap-4">
+                    {packageEngagement.map((pkg) => (
+                        <div key={pkg.id} className="bg-white border border-border/40 rounded-xl shadow-sm overflow-hidden flex flex-col">
+                            <div onClick={() => toggleRow(pkg.id)} className="p-4 flex flex-col gap-3 active:bg-muted/50 transition-colors cursor-pointer">
+                                <div className="flex justify-between items-start">
+                                    <h3 className="font-bold text-foreground leading-tight pr-2">{pkg.name}</h3>
+                                    <div className="text-[#2A5244] shrink-0">{expandedRow === pkg.id ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}</div>
+                                </div>
+                                <div className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">
+                                    <div className="flex justify-between"><span>All-Time Clicks:</span><span className="font-black text-slate-700">{pkg.allTimeClicks || 0}</span></div>
+                                    <div className="flex justify-between text-[#2A5244]"><span>7d Clicks:</span><span className="font-black flex items-center gap-1"><TrendingUp size={12} className="text-[#FA6D16]" /> {pkg.sevenDayClicks || 0}</span></div>
+                                    <div className="flex justify-between text-[#FA6D16]"><span>7d Velocity Time:</span><span className="font-black">{pkg.sevenDayTotalTime || 0}s</span></div>
+                                </div>
+                            </div>
+                            <AnimatePresence>
+                                {expandedRow === pkg.id && (
+                                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="bg-muted/10 border-t border-border/40">
+                                        {renderExpandedContent(pkg)}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    ))}
+                    {packageEngagement.length === 0 && (
+                        <div className="bg-white border border-dashed border-border/60 rounded-xl p-8 text-center text-muted-foreground italic">
+                            No package analytics available yet.
+                        </div>
+                    )}
                 </div>
             </div>
 
