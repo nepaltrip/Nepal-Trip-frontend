@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { LogOut, Shield, ChevronRight } from "lucide-react";
+// ✨ ADDED 'Briefcase' to Lucide imports for the Services button
+import { LogOut, Shield, ChevronRight, Briefcase } from "lucide-react";
 
-// Note: Ensure `pathname` is passed from the parent Navbar component
 export function MobileDrawer({ isOpen, onClose, user, isAuthenticated, handleLogout, exploreNav, onTriggerAction, pathname }) {
     const [currentY, setCurrentY] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
@@ -43,7 +43,6 @@ export function MobileDrawer({ isOpen, onClose, user, isAuthenticated, handleLog
         setCurrentY(0);
     };
 
-    // Starts smooth slide down, waits 300ms, then runs action
     const executeAction = (action, payload = null) => {
         onClose();
         setTimeout(() => {
@@ -87,7 +86,6 @@ export function MobileDrawer({ isOpen, onClose, user, isAuthenticated, handleLog
                 {isAuthenticated ? (
                     <div className="flex items-center justify-between rounded-xl bg-muted/40 p-3.5 border border-border/40">
                         <div className="flex items-center gap-3">
-                            {/* ✨ UPDATED: Logic to show profile pic if it exists, otherwise the initial */}
                             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FA6D16] text-white font-bold text-base shadow-xs overflow-hidden">
                                 {user?.profilePic ? (
                                     <img
@@ -120,17 +118,31 @@ export function MobileDrawer({ isOpen, onClose, user, isAuthenticated, handleLog
                 )}
 
                 <div className="grid grid-cols-2 gap-2.5 my-5">
-                    {exploreNav.map(n => {
-                        // Check if the current route matches this button's route
-                        const isActive = pathname === n.to;
+                    {/* ✨ ADDED: Hardcoded Services Button as the First Option */}
+                    <button
+                        onClick={() => executeAction("navigate", "/services")}
+                        className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all active:scale-95 ${pathname === "/services"
+                            ? "border-[#FA6D16] bg-[#FA6D16]/10 text-[#FA6D16]"
+                            : "border-border/30 bg-muted/10 text-foreground"
+                            }`}
+                    >
+                        <div className="flex items-center gap-2.5">
+                            <Briefcase className={`h-4 w-4 ${pathname === "/services" ? "text-[#FA6D16]" : "text-muted-foreground/80"}`} />
+                            <span className="text-xs font-semibold">Services</span>
+                        </div>
+                        <ChevronRight className={`h-3 w-3 ${pathname === "/services" ? "text-[#FA6D16]" : "text-muted-foreground/40"}`} />
+                    </button>
 
+                    {/* Renders the rest of the explore options */}
+                    {exploreNav.map(n => {
+                        const isActive = pathname === n.to;
                         return (
                             <button
                                 key={n.to}
                                 onClick={() => executeAction("navigate", n.to)}
                                 className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all active:scale-95 ${isActive
-                                    ? "border-[#FA6D16] bg-[#FA6D16]/10 text-[#FA6D16]" // Active Orange State
-                                    : "border-border/30 bg-muted/10 text-foreground"    // Default State
+                                    ? "border-[#FA6D16] bg-[#FA6D16]/10 text-[#FA6D16]"
+                                    : "border-border/30 bg-muted/10 text-foreground"
                                     }`}
                             >
                                 <div className="flex items-center gap-2.5">
@@ -161,4 +173,4 @@ export function MobileDrawer({ isOpen, onClose, user, isAuthenticated, handleLog
             </div>
         </div>
     );
-}
+}   

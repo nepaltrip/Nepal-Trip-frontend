@@ -7,7 +7,7 @@ import { State, City } from "country-state-city";
 import api from "../../api/axios";
 import CustomSelect from "../../components/ui/CustomSelect";
 
-export function AdminBroadcast() {
+export default function AdminBroadcast() {
     const { socketInstance } = useOutletContext();
 
     const [usersList, setUsersList] = useState([]);

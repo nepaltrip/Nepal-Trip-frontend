@@ -17,8 +17,6 @@ import { useLocationEngine } from "../../hooks/useLocationEngine";
 import api from "../../api/axios";
 import { logOutState, updateUser } from "../../store/slices/authSlice";
 import { GeoLocationModal } from "../modal/GeoLocationModal";
-
-// ✨ IMPORT THE NEW MODAL
 import { UpdateProfileModal } from "../modal/UpdateProfileModal";
 
 export function Navbar({ brand = "Nepal Trip" }) {
@@ -28,11 +26,8 @@ export function Navbar({ brand = "Nepal Trip" }) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [latestNotification, setLatestNotification] = useState(null);
-
-    // ✨ NEW STATE FOR EDIT PROFILE MODAL
     const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
 
-    // Ref to track the profile dropdown area
     const profileRef = useRef(null);
 
     const [forceOpenLogin, setForceOpenLogin] = useState(false);
@@ -89,12 +84,10 @@ export function Navbar({ brand = "Nepal Trip" }) {
         }
     }, [isAuthenticated, user]);
 
-    // Clear unread indicator when panel opens
     useEffect(() => {
         if (isNotificationOpen) setUnreadIndicator(false);
     }, [isNotificationOpen]);
 
-    // Auto-prompt location on first visit with a 24-hour cooldown
     useEffect(() => {
         const timer = setTimeout(() => {
             const lastPromptTime = localStorage.getItem("locationPromptTimestamp");
@@ -110,7 +103,6 @@ export function Navbar({ brand = "Nepal Trip" }) {
         return () => clearTimeout(timer);
     }, [permissionStatus]);
 
-    // Smooth click-outside listener
     useEffect(() => {
         function handleClickOutside(event) {
             if (profileRef.current && !profileRef.current.contains(event.target)) {
@@ -140,6 +132,7 @@ export function Navbar({ brand = "Nepal Trip" }) {
         { label: "Home", to: "/" },
         { label: "Packages", to: "/packages" },
         { label: "Discover", to: "/discover" },
+        { label: "Services", to: "/services" }, // ✨ Added Services here
     ];
 
     const exploreNav = [
@@ -255,8 +248,6 @@ export function Navbar({ brand = "Nepal Trip" }) {
                                 </button>
 
                                 <div className={`absolute right-0 top-full mt-3 w-64 z-50 rounded-2xl border border-border/50 bg-background/95 p-5 shadow-2xl backdrop-blur-xl transition-all duration-300 origin-top-right ${isProfileOpen ? "scale-100 opacity-100 visible" : "scale-95 opacity-0 invisible"}`}>
-
-                                    {/* ✨ NEW: EDIT PROFILE BUTTON */}
                                     <button
                                         onClick={() => {
                                             setIsProfileOpen(false);
@@ -362,7 +353,6 @@ export function Navbar({ brand = "Nepal Trip" }) {
                 />
             )}
 
-            {/* ✨ ADDED UPDATE PROFILE MODAL INTEGRATION */}
             {isAuthenticated && (
                 <UpdateProfileModal
                     isOpen={isEditProfileOpen}

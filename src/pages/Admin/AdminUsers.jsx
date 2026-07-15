@@ -17,7 +17,7 @@ const formatLastSeen = (dateString, isOnline) => {
     return `${Math.floor(diffInSeconds / 86400)} days ago`;
 };
 
-export default function RegisteredUsers() {
+export default function AdminUsers() {
     const { user: currentUser } = useSelector((state) => state.auth);
 
     const [users, setUsers] = useState([]);

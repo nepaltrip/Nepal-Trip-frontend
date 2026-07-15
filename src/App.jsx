@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect, useState, useRef } from 'react';
-import { BrowserRouter, Routes, Route, useLocation, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, Outlet, Router } from 'react-router-dom';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -27,6 +27,7 @@ const SuperAdminLayout = lazy(() => import('./components/superadmin/SuperAdminLa
 const Home = lazy(() => import('./pages/User/Home'));
 const About = lazy(() => import('./pages/User/About'));
 const Contact = lazy(() => import('./pages/User/Contact'));
+const Services = lazy(() => import('./pages/User/Services'));
 const Packages = lazy(() => import('./pages/User/Packages'));
 const PackageDetail = lazy(() => import('./pages/User/PackageDetail'));
 const Testimonials = lazy(() => import('./pages/User/Testimonials'));
@@ -45,11 +46,11 @@ const AdminBroadcast = lazy(() => import('./pages/Admin/AdminBroadcast').then(m 
 // ==========================================
 // Lazy Load Super Admin Pages
 // ==========================================
-const SuperAdminAnalytics = lazy(() => import('./pages/SuperAdmin/SuperAdminAnalytics'));
-const SuperAdminInquiries = lazy(() => import('./pages/SuperAdmin/SuperAdminInquiries'));
-const SuperAdminUsers = lazy(() => import('./pages/SuperAdmin/SuperAdminUsers'));
-const SuperAdminSettings = lazy(() => import('./pages/SuperAdmin/SuperAdminSettings'));
-const SuperAdminBroadcast = lazy(() => import('./pages/SuperAdmin/SuperAdminBroadcast').then(m => ({ default: m.SuperAdminBroadcast }))); // ✨ FIXED: Was statically imported
+const SuperAdminAnalytics = lazy(() => import('./pages/SuperAdmin/SuperAdminAnalytics').then(m => ({ default: m.SuperAdminAnalytics })));
+const SuperAdminInquiries = lazy(() => import('./pages/SuperAdmin/SuperAdminInquiries').then(m => ({ default: m.SuperAdminInquiries })));
+const SuperAdminUsers = lazy(() => import('./pages/SuperAdmin/SuperAdminUsers').then(m => ({ default: m.SuperAdminUsers })));
+const SuperAdminSettings = lazy(() => import('./pages/SuperAdmin/SuperAdminSettings').then(m => ({ default: m.SuperAdminSettings })));
+const SuperAdminBroadcast = lazy(() => import('./pages/SuperAdmin/SuperAdminBroadcast').then(m => ({ default: m.SuperAdminBroadcast })));
 
 // ==========================================
 // Web Push Utility
@@ -262,6 +263,7 @@ function App() {
         <Routes>
           <Route element={<PublicLayout />}>
             <Route path="/" element={<Home />} />
+            <Route path="/services" element={<Services />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/packages" element={<Packages />} />

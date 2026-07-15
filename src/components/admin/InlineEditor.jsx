@@ -75,18 +75,18 @@ export function InlineEditor({
                 )}
 
                 {/* Save/Cancel Action Buttons */}
-                <div className="absolute -bottom-10 right-0 flex gap-2 z-50">
+                <div className="flex gap-2 mt-2 justify-end w-full">
                     <button
                         onClick={handleCancel}
                         disabled={isSaving}
-                        className="p-1.5 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors shadow-sm"
+                        className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
                     >
                         <X size={16} />
                     </button>
                     <button
                         onClick={handleSave}
                         disabled={isSaving}
-                        className="p-1.5 bg-emerald-100 text-emerald-700 rounded-md hover:bg-emerald-200 transition-colors shadow-sm flex items-center justify-center min-w-8"
+                        className="p-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors min-w-9 flex items-center justify-center"
                     >
                         {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                     </button>
