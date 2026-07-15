@@ -42,7 +42,7 @@ const AdminAnalytics = lazy(() => import('./pages/Admin/AdminAnalytics'));
 const AdminInquiries = lazy(() => import('./pages/Admin/AdminInquiries'));
 const AdminSettings = lazy(() => import('./pages/Admin/AdminSettings'));
 const AdminUsers = lazy(() => import('./pages/Admin/AdminUsers'));
-const AdminBroadcast = lazy(() => import('./pages/Admin/AdminBroadcast').then(m => ({ default: m.AdminBroadcast })));
+const AdminBroadcast = lazy(() => import('./pages/Admin/AdminBroadcast'));
 
 // ==========================================
 // Lazy Load Super Admin Pages
