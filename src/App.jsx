@@ -10,9 +10,16 @@ import './App.css';
 
 import { useDispatch, useSelector } from 'react-redux';
 import { setCredentials, logOutState } from './store/slices/authSlice';
-import FloatingUploadManager from './components/Gallery/FloatingUploadManager';
 import api from './api/axios';
 import { useRegisterSW } from 'virtual:pwa-register/react';
+
+// ==========================================
+// Static import for Home (LCP-critical route)
+// Do NOT lazy-load this — it's your most-visited page and
+// lazy-loading it adds an extra network round trip before
+// the hero content can even start downloading.
+// ==========================================
+import Home from './pages/User/Home';
 
 // ==========================================
 // Lazy Load Layouts
@@ -21,9 +28,8 @@ const AdminLayout = lazy(() => import('./components/admin/AdminLayout').then(m =
 const SuperAdminLayout = lazy(() => import('./components/superadmin/SuperAdminLayout').then(m => ({ default: m.SuperAdminLayout })));
 
 // ==========================================
-// Lazy Load Public Pages
+// Lazy Load Public Pages (not needed on first paint)
 // ==========================================
-const Home = lazy(() => import('./pages/User/Home'));
 const About = lazy(() => import('./pages/User/About'));
 const Contact = lazy(() => import('./pages/User/Contact'));
 const Services = lazy(() => import('./pages/User/Services'));
@@ -50,6 +56,14 @@ const SuperAdminInquiries = lazy(() => import('./pages/SuperAdmin/SuperAdminInqu
 const SuperAdminUsers = lazy(() => import('./pages/SuperAdmin/SuperAdminUsers'))
 const SuperAdminSettings = lazy(() => import('./pages/SuperAdmin/SuperAdminSettings'))
 const SuperAdminBroadcast = lazy(() => import('./pages/SuperAdmin/SuperAdminBroadcast'))
+
+// ==========================================
+// Lazy Load Floating Upload Manager
+// Previously imported statically and rendered on EVERY page
+// (including public marketing pages), which shipped its JS
+// to every visitor. Now lazy-loaded and gated behind auth.
+// ==========================================
+const FloatingUploadManager = lazy(() => import('./components/Gallery/FloatingUploadManager'));
 
 // ==========================================
 // Web Push Utility
@@ -267,7 +281,12 @@ function App() {
       <ScrollToTop />
       <UpdateNotification />
 
-      <FloatingUploadManager />
+      {/* Only ships FloatingUploadManager's JS to authenticated users who need it */}
+      {isAuthenticated && (
+        <Suspense fallback={null}>
+          <FloatingUploadManager />
+        </Suspense>
+      )}
 
       <ToastContainer
         position="top-right"

@@ -29,10 +29,24 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 
-  <!-- EXACT TYPOGRAPHY (PRECONNECTED & ASYNCHRONOUSLY LOADED TO PREVENT RENDER-BLOCKING) -->
+  <!-- ============================================
+       PRECONNECTS
+       Establishes early connections to critical
+       third-party/API origins so the first real
+       request to each doesn't pay the full DNS +
+       TCP + TLS handshake cost.
+       Lighthouse specifically flagged the backend
+       preconnect as an est. 310ms LCP saving.
+       Keep this list to your most critical origins
+       only (max ~4) — too many preconnects can
+       actually hurt by contending for bandwidth.
+  ============================================ -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://nepal-trip-backend.onrender.com" crossorigin>
+  <link rel="preconnect" href="https://images.unsplash.com" crossorigin>
 
+  <!-- EXACT TYPOGRAPHY (PRECONNECTED & ASYNCHRONOUSLY LOADED TO PREVENT RENDER-BLOCKING) -->
   <!-- Preload the stylesheet for faster fetching -->
   <link rel="preload" as="style"
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" />

@@ -213,10 +213,10 @@ const defaultSettings = {
     galleryTagline: "Through our lens",
     galleryTitle: "Glimpses of Nepal",
     galleryPreview: [
-        "https://images.unsplash.com/photo-1544735716-392fe2489ffa?q=80&w=800&auto=format&fit=crop",
-        "https://images.unsplash.com/photo-1588714477688-cf28a50e94f7?q=80&w=800&auto=format&fit=crop",
-        "https://images.unsplash.com/photo-1518002054494-3a6f94352e9d?q=80&w=800&auto=format&fit=crop",
-        "https://images.unsplash.com/photo-1605640840605-14ac1855827b?q=80&w=800&auto=format&fit=crop"
+        "https://images.unsplash.com/photo-1544735716-392fe2489ffa?q=75&w=420&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1588714477688-cf28a50e94f7?q=75&w=420&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1518002054494-3a6f94352e9d?q=75&w=420&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1605640840605-14ac1855827b?q=75&w=420&auto=format&fit=crop"
     ],
     testimonialsTagline: "Kind words",
     testimonialsTitle: "Loved by travelers",
