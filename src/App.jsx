@@ -37,9 +37,10 @@ const Discover = lazy(() => import('./pages/User/Discover'));
 // Lazy Load Admin Pages
 // ==========================================
 const AdminAnalytics = lazy(() => import('./pages/Admin/AdminAnalytics'));
-const InquiryDesk = lazy(() => import('./pages/Admin/InquiryDesk'));
+const AdminInquiries = lazy(() => import('./pages/Admin/AdminInquiries'));
 const AdminSettings = lazy(() => import('./pages/Admin/AdminSettings'));
-const RegisteredUsers = lazy(() => import('./pages/Admin/RegisteredUsers')); // ✨ FIXED: Was statically imported
+const AdminUsers = lazy(() => import('./pages/Admin/AdminUsers'));
+const AdminBroadcast = lazy(() => import('./pages/Admin/AdminBroadcast').then(m => ({ default: m.AdminBroadcast }))); // ✨ ADD THIS
 
 // ==========================================
 // Lazy Load Super Admin Pages
@@ -272,8 +273,9 @@ function App() {
 
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminAnalytics />} />
-            <Route path="users" element={<RegisteredUsers />} />
-            <Route path="inquiries" element={<InquiryDesk />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="inquiries" element={<AdminInquiries />} />
+            <Route path="broadcast" element={<AdminBroadcast />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>
 
