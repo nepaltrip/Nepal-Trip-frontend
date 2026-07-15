@@ -21,21 +21,29 @@
   <meta property="og:title" content="Nepal Trip | Best Nepal Tour Packages" />
   <meta property="og:description"
     content="Book top-rated Nepal tour packages with nepaltrip.in. Explore Kathmandu, Pokhara, and the Himalayas." />
-  <!-- Replace with an actual image URL from your site later -->
   <meta property="og:image" content="https://nepaltrip.in/default-share-image.jpg" />
 
-  <!-- 3. PWA Essential Meta Tags (Fixed the deprecation warning) -->
+  <!-- 3. PWA Essential Meta Tags -->
   <meta name="theme-color" content="#FDFBF7" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 
-  <!-- EXACT TYPOGRAPHY -->
+  <!-- EXACT TYPOGRAPHY (PRECONNECTED & ASYNCHRONOUSLY LOADED TO PREVENT RENDER-BLOCKING) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
-    rel="stylesheet">
+
+  <!-- Preload the stylesheet for faster fetching -->
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=YOUR_FONT_HERE&display=swap" />
+
+  <!-- Load asynchronously using the 'print' media type trick -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=YOUR_FONT_HERE&display=swap" media="print"
+    onload="this.media='all'" />
+
+  <!-- Fallback for browsers with JavaScript disabled -->
+  <noscript>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=YOUR_FONT_HERE&display=swap" />
+  </noscript>
 </head>
 
 <body>

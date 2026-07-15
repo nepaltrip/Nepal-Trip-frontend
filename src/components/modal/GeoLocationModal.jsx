@@ -59,6 +59,7 @@ export function GeoLocationModal({ isOpen, onClose, locationData, permissionStat
                 <button
                     onClick={onClose}
                     className="absolute right-5 top-5 rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                    aria-label="Close modal"
                 >
                     <X className="h-5 w-5" />
                 </button>
