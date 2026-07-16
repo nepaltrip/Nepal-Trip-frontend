@@ -167,7 +167,7 @@ export default function Services() {
 
     if (isLoading) {
         return (
-            <section className="relative py-20 bg-[#FDFBF7] overflow-hidden min-h-screen">
+            <section className="relative pt-8 pb-20 md:pt-12 bg-[#FDFBF7] overflow-hidden min-h-screen">
                 <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
                     {/* Shimmer Header */}
                     <div className="text-center max-w-3xl mx-auto mb-16 flex flex-col items-center">

@@ -231,17 +231,17 @@ export default function Contact() {
                             >
                                 <div className="grid gap-2">
                                     <Label htmlFor="name" className="text-sm font-medium">Full name <span className="text-primary">*</span></Label>
-                                    <Input id="name" name="name" required placeholder="John Doe" className="h-11 rounded-2xl transition-all hover:border-[#FA6D16]/50 focus:border-[#FA6D16] focus-visible:ring-[#FA6D16]/20" />
+                                    <Input id="name" name="name" required placeholder="Name" className="h-11 rounded-2xl transition-all hover:border-[#FA6D16]/50 focus:border-[#FA6D16] focus-visible:ring-[#FA6D16]/20" />
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="grid gap-2">
                                         <Label htmlFor="email" className="text-sm font-medium">Email <span className="text-primary">*</span></Label>
-                                        <Input id="email" name="email" type="email" required placeholder="john@example.com" className="h-11 rounded-2xl transition-all hover:border-[#FA6D16]/50 focus:border-[#FA6D16] focus-visible:ring-[#FA6D16]/20" />
+                                        <Input id="email" name="email" type="email" required placeholder="Email" className="h-11 rounded-2xl transition-all hover:border-[#FA6D16]/50 focus:border-[#FA6D16] focus-visible:ring-[#FA6D16]/20" />
                                     </div>
                                     <div className="grid gap-2">
                                         <Label htmlFor="phone" className="text-sm font-medium">Phone</Label>
-                                        <Input id="phone" name="phone" type="tel" placeholder="+1 (555) 000-0000" className="h-11 rounded-2xl transition-all hover:border-[#FA6D16]/50 focus:border-[#FA6D16] focus-visible:ring-[#FA6D16]/20" />
+                                        <Input id="phone" name="phone" type="tel" placeholder="Phone" className="h-11 rounded-2xl transition-all hover:border-[#FA6D16]/50 focus:border-[#FA6D16] focus-visible:ring-[#FA6D16]/20" />
                                     </div>
                                 </div>
 
