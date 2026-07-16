@@ -182,7 +182,8 @@ export default function SuperAdminInquiries() {
         isOnline: inq.userId?.isOnline || false,
         lastSeenAt: inq.userId?.lastSeenAt,
         status: inq.status,
-        isBanned: inq.userId?.status === 'banned'
+        isBanned: inq.userId?.status === 'banned',
+        replies: inq.replies || []
     });
 
     if (isLoading) return <div className="h-full flex items-center justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2A5244]"></div></div>;
@@ -328,6 +329,22 @@ export default function SuperAdminInquiries() {
                                                     {activeDisplay.message}
                                                 </div>
                                             </div>
+
+                                            {/* ✨ NEW: Render Admin Replies History */}
+                                            {activeDisplay.replies.length > 0 && (
+                                                <div className="flex flex-col gap-4 mb-8 md:pl-12">
+                                                    {activeDisplay.replies.map((reply, idx) => (
+                                                        <div key={idx} className="flex flex-col items-end gap-1 w-full">
+                                                            <span className="text-[10px] text-muted-foreground font-semibold pr-2">
+                                                                {reply.repliedBy?.name || 'Admin'} replied on {formatDate(reply.repliedAt)}
+                                                            </span>
+                                                            <div className="bg-[#2A5244]/10 border border-[#2A5244]/20 p-4 md:p-5 rounded-2xl rounded-tr-sm shadow-sm text-sm md:text-base text-[#1b362c] leading-relaxed whitespace-pre-wrap font-medium w-[90%] md:w-[85%] self-end">
+                                                                {reply.message}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
 
                                             {/* ✨ NEW: Beautified Form Details Cards */}
                                             {Object.keys(selectedInquiry.formData || {}).length > 0 && (
