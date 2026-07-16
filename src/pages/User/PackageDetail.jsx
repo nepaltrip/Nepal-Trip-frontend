@@ -9,6 +9,7 @@ import { InlineEditor } from "../../components/admin/InlineEditor";
 import api from "../../api/axios";
 import { toast } from "react-toastify";
 import SEO from "../../components/site/SEO";
+
 // --- Tier Styling Helpers ---
 const getTierBadgeStyle = (tier) => {
     if (tier === 'Gold') return "bg-gradient-to-br from-yellow-200 via-amber-400 to-yellow-600 text-yellow-950 border-amber-300/50 shadow-[0_0_15px_rgba(251,191,36,0.3)]";
@@ -239,7 +240,6 @@ export default function PackageDetail() {
                 setPkg(data);
                 setLiveDesktop(data.cover_image_desktop || "");
                 setLiveMobile(data.cover_image_mobile || "");
-                // ✨ REMOVED document.title from here
             } catch (error) {
                 toast.error("Failed to load package details");
                 navigate('/packages');
@@ -250,7 +250,6 @@ export default function PackageDetail() {
         fetchPackage();
     }, [slug, navigate]);
 
-    // ✨ HEARTBEAT LOOP: Track Inside Package windows continuously
     useEffect(() => {
         if (loading || !pkg || !pkg._id) return;
 
@@ -260,7 +259,7 @@ export default function PackageDetail() {
                 await api.post(`/packages/${pkg._id}/telemetry`, {
                     visitorId,
                     actionType: 'inside_detail',
-                    tier: pkg.serviceTier, // Uses the package's actual tier
+                    tier: pkg.serviceTier,
                     durationSeconds: 5,
                     packageName: pkg.title,
                     category: pkg.category,
@@ -275,7 +274,6 @@ export default function PackageDetail() {
         return () => clearInterval(timer);
     }, [loading, pkg]);
 
-    // Format tier to ensure clean save
     const handleUpdate = async (field, value) => {
         let finalValue = value;
 
@@ -336,7 +334,6 @@ export default function PackageDetail() {
 
     return (
         <>
-            {/* ✨ NEW SEO COMPONENT ✨ */}
             <SEO
                 title={`${pkg.title} | Nepal Trip`}
                 description={pkg.short_description || `Book the ${pkg.title} with Nepal Trip.`}
@@ -460,6 +457,84 @@ export default function PackageDetail() {
                                 </div>
                             </div>
 
+                            {/* Included / Excluded Section */}
+                            {((pkg.inclusions && pkg.inclusions.length > 0) || (pkg.exclusions && pkg.exclusions.length > 0) || activeGodMode) && (
+                                <div>
+                                    <h2 className="font-serif text-2xl md:text-3xl font-bold text-foreground mb-6">
+                                        Included & Exclude From Package
+                                    </h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {/* Included Card */}
+                                        <div className="bg-green-500/5 border border-green-500/20 rounded-2xl p-6 shadow-sm">
+                                            <h3 className="text-lg font-semibold text-green-700 dark:text-green-500 mb-4 flex items-center gap-2">
+                                                <Check className="text-green-600 dark:text-green-500 bg-green-500/20 rounded-full p-1" size={24} />
+                                                What's Included
+                                            </h3>
+                                            <ul className="space-y-3">
+                                                {(pkg.inclusions || []).map((item, idx) => (
+                                                    <li key={idx} className="flex items-start gap-3 group">
+                                                        <Check className="text-green-600 dark:text-green-500 mt-0.5 shrink-0" size={18} />
+                                                        <div className="flex-1 text-sm md:text-base text-muted-foreground">
+                                                            {activeGodMode ? (
+                                                                <div className="flex items-center justify-between gap-2">
+                                                                    <InlineEditor value={item} onSave={(val) => updateArrayItem("inclusions", idx, val)} />
+                                                                    <button onClick={() => removeFromArray("inclusions", idx)} className="opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:bg-red-500/10 rounded transition-all">
+                                                                        <Trash2 size={14} />
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                item
+                                                            )}
+                                                        </div>
+                                                    </li>
+                                                ))}
+                                                {activeGodMode && (
+                                                    <li className="pt-2 border-t border-green-500/10">
+                                                        <Button size="sm" variant="ghost" onClick={() => addToArray("inclusions", "New Included Item")} className="text-green-600 hover:text-green-700 hover:bg-green-500/10 w-full justify-start">
+                                                            <Plus size={16} className="mr-2" /> Add Included Item
+                                                        </Button>
+                                                    </li>
+                                                )}
+                                            </ul>
+                                        </div>
+
+                                        {/* Excluded Card */}
+                                        <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-6 shadow-sm">
+                                            <h3 className="text-lg font-semibold text-red-700 dark:text-red-500 mb-4 flex items-center gap-2">
+                                                <X className="text-red-600 dark:text-red-500 bg-red-500/20 rounded-full p-1" size={24} />
+                                                What's Excluded
+                                            </h3>
+                                            <ul className="space-y-3">
+                                                {(pkg.exclusions || []).map((item, idx) => (
+                                                    <li key={idx} className="flex items-start gap-3 group">
+                                                        <X className="text-red-600 dark:text-red-500 mt-0.5 shrink-0" size={18} />
+                                                        <div className="flex-1 text-sm md:text-base text-muted-foreground">
+                                                            {activeGodMode ? (
+                                                                <div className="flex items-center justify-between gap-2">
+                                                                    <InlineEditor value={item} onSave={(val) => updateArrayItem("exclusions", idx, val)} />
+                                                                    <button onClick={() => removeFromArray("exclusions", idx)} className="opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:bg-red-500/10 rounded transition-all">
+                                                                        <Trash2 size={14} />
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                item
+                                                            )}
+                                                        </div>
+                                                    </li>
+                                                ))}
+                                                {activeGodMode && (
+                                                    <li className="pt-2 border-t border-red-500/10">
+                                                        <Button size="sm" variant="ghost" onClick={() => addToArray("exclusions", "New Excluded Item")} className="text-red-600 hover:text-red-700 hover:bg-red-500/10 w-full justify-start">
+                                                            <Plus size={16} className="mr-2" /> Add Excluded Item
+                                                        </Button>
+                                                    </li>
+                                                )}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Itinerary */}
                             <div>
                                 <h2 className="font-serif text-2xl md:text-3xl font-bold text-foreground mb-6 md:mb-8 flex items-center justify-between">
@@ -478,13 +553,11 @@ export default function PackageDetail() {
                             </div>
                         </div>
 
-                        {/* ✨ UPDATED FLOATING SIDEBAR PANEL ✨ */}
+                        {/* Floating Sidebar Panel */}
                         <aside className="lg:sticky lg:top-28 lg:h-fit z-10">
                             <div className="rounded-[2rem] border border-border bg-card p-6 shadow-xl relative overflow-hidden">
-                                {/* Background glow adapts to tier */}
                                 <div className={`absolute top-0 right-0 -mt-16 -mr-16 w-48 h-48 rounded-full blur-3xl pointer-events-none ${pkg.serviceTier === 'Platinum' ? 'bg-slate-400/20' : 'bg-amber-400/20'}`} />
 
-                                {/* Static Tier Badge (Editable in God Mode) */}
                                 {(pkg.serviceTier !== "All" || activeGodMode) && (
                                     <div className="mb-6 flex">
                                         <span className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 border w-full justify-center shadow-sm ${getTierBadgeStyle(pkg.serviceTier)}`}>
