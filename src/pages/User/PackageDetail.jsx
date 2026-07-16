@@ -332,6 +332,11 @@ export default function PackageDetail() {
 
     if (!pkg) return null;
 
+    // Derived conditional rendering state
+    const showInclusions = (pkg.inclusions && pkg.inclusions.length > 0) || activeGodMode;
+    const showExclusions = (pkg.exclusions && pkg.exclusions.length > 0) || activeGodMode;
+    const showInclusionExclusionSection = showInclusions || showExclusions;
+
     return (
         <>
             <SEO
@@ -458,79 +463,85 @@ export default function PackageDetail() {
                             </div>
 
                             {/* Included / Excluded Section */}
-                            {((pkg.inclusions && pkg.inclusions.length > 0) || (pkg.exclusions && pkg.exclusions.length > 0) || activeGodMode) && (
+                            {showInclusionExclusionSection && (
                                 <div>
                                     <h2 className="font-serif text-2xl md:text-3xl font-bold text-foreground mb-6">
                                         Included & Exclude From Package
                                     </h2>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className={`grid grid-cols-1 ${showInclusions && showExclusions ? 'md:grid-cols-2' : ''} gap-6`}>
+
                                         {/* Included Card */}
-                                        <div className="bg-green-500/5 border border-green-500/20 rounded-2xl p-6 shadow-sm">
-                                            <h3 className="text-lg font-semibold text-green-700 dark:text-green-500 mb-4 flex items-center gap-2">
-                                                <Check className="text-green-600 dark:text-green-500 bg-green-500/20 rounded-full p-1" size={24} />
-                                                What's Included
-                                            </h3>
-                                            <ul className="space-y-3">
-                                                {(pkg.inclusions || []).map((item, idx) => (
-                                                    <li key={idx} className="flex items-start gap-3 group">
-                                                        <Check className="text-green-600 dark:text-green-500 mt-0.5 shrink-0" size={18} />
-                                                        <div className="flex-1 text-sm md:text-base text-muted-foreground">
-                                                            {activeGodMode ? (
-                                                                <div className="flex items-center justify-between gap-2">
-                                                                    <InlineEditor value={item} onSave={(val) => updateArrayItem("inclusions", idx, val)} />
-                                                                    <button onClick={() => removeFromArray("inclusions", idx)} className="opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:bg-red-500/10 rounded transition-all">
-                                                                        <Trash2 size={14} />
-                                                                    </button>
-                                                                </div>
-                                                            ) : (
-                                                                item
-                                                            )}
-                                                        </div>
-                                                    </li>
-                                                ))}
-                                                {activeGodMode && (
-                                                    <li className="pt-2 border-t border-green-500/10">
-                                                        <Button size="sm" variant="ghost" onClick={() => addToArray("inclusions", "New Included Item")} className="text-green-600 hover:text-green-700 hover:bg-green-500/10 w-full justify-start">
-                                                            <Plus size={16} className="mr-2" /> Add Included Item
-                                                        </Button>
-                                                    </li>
-                                                )}
-                                            </ul>
-                                        </div>
+                                        {showInclusions && (
+                                            <div className="bg-green-500/5 border border-green-500/20 rounded-2xl p-6 shadow-sm">
+                                                <h3 className="text-lg font-semibold text-green-700 dark:text-green-500 mb-4 flex items-center gap-2">
+                                                    <Check className="text-green-600 dark:text-green-500 bg-green-500/20 rounded-full p-1" size={24} />
+                                                    What's Included
+                                                </h3>
+                                                <ul className="space-y-3">
+                                                    {(pkg.inclusions || []).map((item, idx) => (
+                                                        <li key={idx} className="flex items-start gap-3 group">
+                                                            <Check className="text-green-600 dark:text-green-500 mt-0.5 shrink-0" size={18} />
+                                                            <div className="flex-1 text-sm md:text-base text-muted-foreground">
+                                                                {activeGodMode ? (
+                                                                    <div className="flex items-center justify-between gap-2">
+                                                                        <InlineEditor value={item} onSave={(val) => updateArrayItem("inclusions", idx, val)} />
+                                                                        <button onClick={() => removeFromArray("inclusions", idx)} className="opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:bg-red-500/10 rounded transition-all">
+                                                                            <Trash2 size={14} />
+                                                                        </button>
+                                                                    </div>
+                                                                ) : (
+                                                                    item
+                                                                )}
+                                                            </div>
+                                                        </li>
+                                                    ))}
+                                                    {activeGodMode && (
+                                                        <li className="pt-2 border-t border-green-500/10">
+                                                            <Button size="sm" variant="ghost" onClick={() => addToArray("inclusions", "New Included Item")} className="text-green-600 hover:text-green-700 hover:bg-green-500/10 w-full justify-start">
+                                                                <Plus size={16} className="mr-2" /> Add Included Item
+                                                            </Button>
+                                                        </li>
+                                                    )}
+                                                </ul>
+                                            </div>
+                                        )}
 
                                         {/* Excluded Card */}
-                                        <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-6 shadow-sm">
-                                            <h3 className="text-lg font-semibold text-red-700 dark:text-red-500 mb-4 flex items-center gap-2">
-                                                <X className="text-red-600 dark:text-red-500 bg-red-500/20 rounded-full p-1" size={24} />
-                                                What's Excluded
-                                            </h3>
-                                            <ul className="space-y-3">
-                                                {(pkg.exclusions || []).map((item, idx) => (
-                                                    <li key={idx} className="flex items-start gap-3 group">
-                                                        <X className="text-red-600 dark:text-red-500 mt-0.5 shrink-0" size={18} />
-                                                        <div className="flex-1 text-sm md:text-base text-muted-foreground">
-                                                            {activeGodMode ? (
-                                                                <div className="flex items-center justify-between gap-2">
-                                                                    <InlineEditor value={item} onSave={(val) => updateArrayItem("exclusions", idx, val)} />
-                                                                    <button onClick={() => removeFromArray("exclusions", idx)} className="opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:bg-red-500/10 rounded transition-all">
-                                                                        <Trash2 size={14} />
-                                                                    </button>
-                                                                </div>
-                                                            ) : (
-                                                                item
-                                                            )}
-                                                        </div>
-                                                    </li>
-                                                ))}
-                                                {activeGodMode && (
-                                                    <li className="pt-2 border-t border-red-500/10">
-                                                        <Button size="sm" variant="ghost" onClick={() => addToArray("exclusions", "New Excluded Item")} className="text-red-600 hover:text-red-700 hover:bg-red-500/10 w-full justify-start">
-                                                            <Plus size={16} className="mr-2" /> Add Excluded Item
-                                                        </Button>
-                                                    </li>
-                                                )}
-                                            </ul>
-                                        </div>
+                                        {showExclusions && (
+                                            <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-6 shadow-sm">
+                                                <h3 className="text-lg font-semibold text-red-700 dark:text-red-500 mb-4 flex items-center gap-2">
+                                                    <X className="text-red-600 dark:text-red-500 bg-red-500/20 rounded-full p-1" size={24} />
+                                                    What's Excluded
+                                                </h3>
+                                                <ul className="space-y-3">
+                                                    {(pkg.exclusions || []).map((item, idx) => (
+                                                        <li key={idx} className="flex items-start gap-3 group">
+                                                            <X className="text-red-600 dark:text-red-500 mt-0.5 shrink-0" size={18} />
+                                                            <div className="flex-1 text-sm md:text-base text-muted-foreground">
+                                                                {activeGodMode ? (
+                                                                    <div className="flex items-center justify-between gap-2">
+                                                                        <InlineEditor value={item} onSave={(val) => updateArrayItem("exclusions", idx, val)} />
+                                                                        <button onClick={() => removeFromArray("exclusions", idx)} className="opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:bg-red-500/10 rounded transition-all">
+                                                                            <Trash2 size={14} />
+                                                                        </button>
+                                                                    </div>
+                                                                ) : (
+                                                                    item
+                                                                )}
+                                                            </div>
+                                                        </li>
+                                                    ))}
+                                                    {activeGodMode && (
+                                                        <li className="pt-2 border-t border-red-500/10">
+                                                            <Button size="sm" variant="ghost" onClick={() => addToArray("exclusions", "New Excluded Item")} className="text-red-600 hover:text-red-700 hover:bg-red-500/10 w-full justify-start">
+                                                                <Plus size={16} className="mr-2" /> Add Excluded Item
+                                                            </Button>
+                                                        </li>
+                                                    )}
+                                                </ul>
+                                            </div>
+                                        )}
+
                                     </div>
                                 </div>
                             )}
