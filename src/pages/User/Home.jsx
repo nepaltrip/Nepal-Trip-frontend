@@ -564,7 +564,7 @@ export default function Home() {
                         )}
 
                         <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-4">
-                            {settings.galleryPreview.map((src, idx) => (
+                            {(isMobile ? settings.galleryPreview.slice(0, 4) : settings.galleryPreview).map((src, idx) => (
                                 <GalleryItem
                                     key={idx}
                                     src={src}
@@ -591,7 +591,7 @@ export default function Home() {
                 {isLoadingTestimonials ? (
                     <TestimonialsSkeleton />
                 ) : showTestimonials && (
-                    <section className="bg-muted/30 py-20 transition-opacity duration-500 relative">
+                    <section className="bg-muted/30 pt-20 pb-8 md:pb-10 transition-opacity duration-500 relative">
                         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                             <div className="flex justify-between items-end">
                                 <div>
